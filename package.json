@@ -1,0 +1,46 @@
+{
+    "name": "@wecco/core",
+    "version": "0.1.0",
+    "description": "A simple, minimalistic web framework based on web components and HTML templates",
+    "license": "Apache License Version 2.0",
+    "devDependencies": {
+        "typescript": "3.3.1",
+        "mocha": "6.0.2",
+        "@types/mocha": "5.2.0",
+        "ts-node": "8.0.2",
+        "iko": "0.6.0",
+        "sinon": "7.2.6",
+        "@types/sinon": "4.3.1",
+        "jsdom": "13.2.0",
+        "jsdom-global": "3.0.2",
+        "nyc": "13.3.0"
+    },
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build": "tsc -p tsconfig.build.json",
+        "watch": "tsc -w -p tsconfig.build.json",
+        "test": "mocha",
+        "coverage": "nyc mocha"
+    },
+    "nyc": {
+        "include": [
+            "src/**/*.ts"
+        ],
+        "extension": [
+            ".ts"
+        ],
+        "require": [
+            "ts-node/register"
+        ],
+        "reporter": [
+            "text-summary",
+            "html"
+        ],
+        "sourceMap": true,
+        "instrument": true
+    }
+}
