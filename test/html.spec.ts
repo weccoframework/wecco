@@ -39,6 +39,14 @@ describe("html.ts", async () => {
             expect(document.body.innerHTML).toMatch(/^<p data-wecco-html-id="[a-z0-9]{6}">Hello, world<\/p>/)
         })
 
+        it("should create html w/ toplevel placeholder", () => {
+            const gretee = "world";
+
+            (html`<p>Hello</p>${gretee}`).render(document.body)
+
+            expect(document.body.innerHTML).toMatch(/^<p>Hello<\/p>world/)
+        })
+
         it("should create html w/ multiple adjecent placeholder", () => {
             const message = "Hello, ";
             const gretee = "world";

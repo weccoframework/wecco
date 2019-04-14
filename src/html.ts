@@ -32,14 +32,14 @@ export function html(strings: TemplateStringsArray, ...args: any): ContentProduc
 const WeccoHtmlIdDataAttributeName = "data-wecco-html-id"
 
 interface Binding {
-    applyBinding(root: ParentNode, data: any[]): void
+    applyBinding(root: DocumentFragment, data: any[]): void
 }
 
 class CommentNodeBinding implements Binding {
-    constructor(private id: string, private index: number) { }
+    constructor(private id: string | null, private index: number) { }
 
-    applyBinding(root: ParentNode, data: any[]): void {
-        const comment = this.findNode(root)
+    applyBinding(root: DocumentFragment, data: any[]): void {
+        const [insertPoint, comment] = this.findNode(root)
 
         const d = data[this.index]
         let dataArray: any[]
@@ -52,35 +52,42 @@ class CommentNodeBinding implements Binding {
 
         dataArray.forEach(d => {
             if (d instanceof Element) {
-                comment.parentElement.insertBefore(d, comment)
+                insertPoint.insertBefore(d, comment)
             } else if (d instanceof HtmlTemplateContentProducer) {
-                d.createContentElements().forEach(n => comment.parentElement.insertBefore(n, comment))
+                d.createContentElements().forEach(n => insertPoint.insertBefore(n, comment))
             } else {
-                comment.parentElement.insertBefore(document.createTextNode(d), comment)
+                insertPoint.insertBefore(document.createTextNode(d), comment)
             }
         })
-        comment.parentElement.removeChild(comment)
+        insertPoint.removeChild(comment)
     }
 
-    private findNode(root: ParentNode): Comment | null {
-        const parentElement = root.querySelector(`[${WeccoHtmlIdDataAttributeName}="${this.id}"]`)
+    private findNode(root: DocumentFragment): [Element | DocumentFragment, Comment | null] {
+        let parentElement: Element | DocumentFragment
+
+        if (this.id === null) {
+            parentElement = root
+        } else {
+            parentElement = root.querySelector(`[${WeccoHtmlIdDataAttributeName}="${this.id}"]`)
+        }
+
         if (parentElement) {
             for (let child of Array.from(parentElement.childNodes)) {
                 if ((child instanceof Comment) && (<Comment>child).data === `{{wecco-html-${this.index}}}`) {
-                    return child
+                    return [parentElement, child]
                 }
             }
         }
 
         console.error(`No such element with ${WeccoHtmlIdDataAttributeName}=${this.id} nested under `, root)
-        return null
+        return [parentElement, null]
     }
 }
 
 class AttributeBinding implements Binding {
     constructor(private attributeName: string, private elementId: string, private dataIndex: number) { }
 
-    applyBinding(root: ParentNode, data: any[]): void {
+    applyBinding(root: DocumentFragment, data: any[]): void {
         const node = root.querySelector(`[${WeccoHtmlIdDataAttributeName}="${this.elementId}"]`)
 
         if (!(node instanceof Element)) {
@@ -152,13 +159,15 @@ class HtmlTemplateContentProducer implements ContentProducer {
         if (node instanceof Comment) {
             const pattern = /^\{\{wecco-html-([0-9]+)\}\}$/g
             while (true) {
-                const match = pattern.exec(node.textContent)
+                const match = pattern.exec(node.textContent || "")
                 if (!match) {
                     break
                 }
 
-                let id: string
-                if (node.parentElement.hasAttribute(WeccoHtmlIdDataAttributeName)) {
+                let id: string | null
+                if (!node.parentElement) {
+                    id = null
+                } else if (node.parentElement.hasAttribute(WeccoHtmlIdDataAttributeName)) {
                     id = node.parentElement.getAttribute(WeccoHtmlIdDataAttributeName)
                 } else {
                     id = HtmlTemplateContentProducer.generateId()
