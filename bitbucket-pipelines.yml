@@ -8,3 +8,4 @@ pipelines:
         script: 
           - npm install
           - npm test
+          - npm run build

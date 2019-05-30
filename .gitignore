@@ -3,3 +3,5 @@ dist
 coverage
 .nyc_output
 wecco-core*.tgz
+.rpt2_cache
+*.d.ts
