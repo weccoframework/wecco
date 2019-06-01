@@ -96,6 +96,17 @@ export abstract class WeccoElement<T> extends HTMLElement {
     }
 
     /**
+     * Partially updates the bound data with the data given in `data`.
+     * @param data the partial data to update
+     */
+    setData(data: Partial<T>) {
+        Object.keys(data).forEach(k => (this.data as any)[k] = (data as any)[k])
+        if (this.isConnected) {
+            this.updateDom(true)
+        }
+    }
+
+    /**
      * Mounts this element to the DOM node passed to this method.
      * @param elementOrSelector either the element or an selector, which gets resolved using `document.querySelector`
      */
