@@ -32,7 +32,7 @@
         "build": "rollup -c",
         "watch": "tsc -w -p tsconfig.build.json",
         "test": "mocha --require ts-node/register --require jsdom-global/register test/**/*.spec.ts",
-        "acceptance-test": "mocha test/**/acceptance.test.js",
+        "acceptance-test": "mocha --timeout 5000 test/**/acceptance.test.js",
         "coverage": "nyc mocha"
     },
     "nyc": {
