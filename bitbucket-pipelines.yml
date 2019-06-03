@@ -8,4 +8,5 @@ pipelines:
         script: 
           - npm install
           - npm test
+          - npm run acceptance-test
           - npm run build

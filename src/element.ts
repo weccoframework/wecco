@@ -189,6 +189,7 @@ export abstract class WeccoElement<T> extends HTMLElement {
  * The render callback provided to define will be called whenever the element`s content needs to be updated.
  * @param name the name of the custom element. Must follow the custom element specs (i.e. the name must contain a dash)
  * @param renderCallback the render callback
+ * @returns an instance of a `ComponentFactory` which can produce instances of the defined component
  */
 export function define<T>(name: string, renderCallback: RenderCallback<T>): ComponentFactory<T> {
     window.customElements.define(name, class extends WeccoElement<T> {
@@ -199,6 +200,27 @@ export function define<T>(name: string, renderCallback: RenderCallback<T>): Comp
 
 /**
  * Creates an instance of a `define`d element which will use the given `data` and will be added to the given `host` element.
+ * This is an alternative approach to using the `ComponentFactory` returned by `define` which does not require a handle
+ * to the component factory but uses the browser's built-in registry for custom web components.
+ * 
+ * The following two snippets as essentially the same:
+ * 
+ * ```typescript
+ * const SomeComponent = define("some-component", (data: SomeComponentData, notifyUpdate) => {
+ *      // ..
+ * })
+ * 
+ * SomeComponent({}).mount("#body")
+ * ```
+ * vs.
+ * ```typescript
+ * define("some-component", (data: SomeComponentData, notifyUpdate) => {
+ *      // ..
+ * })
+ * 
+ * component("some-component", SomeComponent({}).mount("#body")
+ * ```
+ * 
  * @param componentName the component name
  * @param data the bound data
  * @param host the host to add the component to
