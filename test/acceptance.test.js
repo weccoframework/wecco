@@ -101,7 +101,11 @@ describe("@wecco/core", () => {
 
     before(async () => {
         browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] })
+    })
+
+    beforeEach(async () => {
         page = await browser.newPage()
+        await page.goto("http://localhost:8888/")
     })
 
     afterEach(async function renderScreenshot() {
@@ -114,10 +118,43 @@ describe("@wecco/core", () => {
         await browser.close()
     })
 
-    it("should work", async () => {
-        await page.goto("http://localhost:8888/")
+    it("should render static text", async () => {
         page.evaluate(() => wecco.define("test-component", () => "<p>test</p>")().mount("#app"))
         const text = await page.$eval("#app p", e => e.innerText)
         expect(text).toBe("test")
+    })
+
+    it("should render dynamic text", async () => {
+        page.evaluate(() => wecco.define("test-component", (data) => `<p>${data.m}</p>`)({ m: "hello, world" }).mount("#app"))
+        const text = await page.$eval("#app p", e => e.innerText)
+        expect(text).toBe("hello, world")
+    })
+
+    it("should render dynamic text using tagged text", async () => {
+        page.evaluate(() => wecco.define("test-component", (data) => wecco.html`<p>${data.m}</p>`)({ m: "hello, world" }).mount("#app"))
+        const text = await page.$eval("#app p", e => e.innerText)
+        expect(text).toBe("hello, world")
+    })
+
+    it("should render interactive element", async () => {
+        page.evaluate(() => wecco
+            .define("test-component",
+                (data, notifyUpdate) => wecco.html`<button @click=${() => { data.c++; notifyUpdate() }}>${data.c}</button>`)({ c: 0 }).mount("#app"))
+        let text = await page.$eval("#app button", e => e.innerText)
+        expect(text).toBe("0");
+        await (await page.$("#app button")).click()
+        text = await page.$eval("#app button", e => e.innerText)
+        expect(text).toBe("1")
+    })
+
+    it("should rerender component when setData is called", async () => {
+        page.evaluate(() => {
+            const c = wecco.define("test-component", data => wecco.html`<p>${data.c} ${data.m}</p>`)
+            const e = c({ c: 0, m: "times" })
+            e.mount("#app")
+            e.setData({ c: 1 })
+        })
+        text = await page.$eval("#app p", e => e.innerText)
+        expect(text).toBe("1 times")
     })
 }) 
