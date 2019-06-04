@@ -9,7 +9,7 @@ export default {
     output: [
         {
             file: `dist/wecco-core.umd.js`,
-            name: "@wecco/core",
+            name: "wecco",
             format: "umd",
             sourcemap: true
         },
