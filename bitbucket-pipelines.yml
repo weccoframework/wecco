@@ -16,4 +16,5 @@ pipelines:
           - curl -X POST "https://${DOWNLOADS_API_AUTH}@api.bitbucket.org/2.0/repositories/wecco/core/downloads" --form files=@$(ls *.tgz)
           - cd dist
           - 'V=$(grep "version" ../package.json | sed -Ee "s/^.*\"version\": \"([^\"]+)\".*$/\\1/"); for f in wecco-core*; do mv "$f" "$(echo "$f" | sed s/wecco-core/wecco-core-$V/)"; done'
-          - curl -X POST "https://${DOWNLOADS_API_AUTH}@api.bitbucket.org/2.0/repositories/wecco/core/downloads" --form files=@$(ls wecco-core*)
+          - curl -X POST "https://${DOWNLOADS_API_AUTH}@api.bitbucket.org/2.0/repositories/wecco/core/downloads" --form files=@$(ls wecco-core*.umd.js)
+          - curl -X POST "https://${DOWNLOADS_API_AUTH}@api.bitbucket.org/2.0/repositories/wecco/core/downloads" --form files=@$(ls wecco-core*.es5.js)
