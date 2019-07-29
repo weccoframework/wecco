@@ -26,7 +26,46 @@ import { ContentProducer } from "./element"
  * @param args the arguments of the template
  */
 export function html(strings: TemplateStringsArray, ...args: any): ContentProducer {
-    return new HtmlTemplateContentProducer(strings, args)
+    const key = HtmlTemplateContentProducerCache.calculateCacheKey(strings)
+    if (HtmlTemplateContentProducerCache.instance.has(key)) {
+        return HtmlTemplateContentProducerCache.instance.get(key).clone(args)
+    }
+
+    const result = HtmlTemplateContentProducer.fromTemplateString(strings, args)
+    HtmlTemplateContentProducerCache.instance.set(key, result)
+
+    return result
+}
+
+class HtmlTemplateContentProducerCache {
+    static readonly instance = new HtmlTemplateContentProducerCache()
+
+    static calculateCacheKey(strings: TemplateStringsArray): string {
+        let result = ""
+
+        strings.forEach((s, i) => {
+            result += s
+            if (i < strings.length - 1) {
+                result += `\${${i}}`
+            }
+        })
+
+        return result
+    }
+
+    private readonly entries = new Map<string, HtmlTemplateContentProducer>()
+
+    has(key: string): boolean {
+        return this.entries.has(key)
+    }
+
+    get(key: string): HtmlTemplateContentProducer {
+        return this.entries.get(key)
+    }
+
+    set(key: string, value: HtmlTemplateContentProducer) {
+        this.entries.set(key, value)
+    }
 }
 
 const WeccoHtmlIdDataAttributeName = "data-wecco-html-id"
@@ -128,25 +167,33 @@ const PlaceholderSingleQuotedAttributeRegex = /[a-z0-9-_@]+\s*=\s*'[^']*$/i;
 const PlaceholderDoubleQuotedAttributeRegex = /[a-z0-9-_@]+\s*=\s*"[^"]*$/i;
 
 class HtmlTemplateContentProducer implements ContentProducer {
-    private templateString: string
-    private data: any[]
+    private readonly templateString: string
+    private readonly data: any[]
 
-    private template: HTMLTemplateElement
-    private bindings: Binding[] = []
+    private readonly template: HTMLTemplateElement
+    private readonly bindings: Binding[] = []
 
-    constructor(strings: TemplateStringsArray, args: any) {
-        this.data = args
-        this.templateString = HtmlTemplateContentProducer.generateHtml(strings)
+    static fromTemplateString(strings: TemplateStringsArray, args: any[]): HtmlTemplateContentProducer {
+        const templateString = HtmlTemplateContentProducer.generateHtml(strings)
 
-        this.template = document.createElement("template")
-        this.template.innerHTML = this.templateString
-        // document.body.appendChild(this.template)
+        const template = document.createElement("template")
+        template.innerHTML = templateString
+        return new HtmlTemplateContentProducer(templateString, args, template)
+    }
 
+    private constructor(templateString: string, data: any[], template: HTMLTemplateElement) {
+        this.templateString = templateString
+        this.data = data
+        this.template = template
         this.determineBindings(this.template.content)
     }
 
+    clone(args: any): HtmlTemplateContentProducer {
+        return new HtmlTemplateContentProducer(this.templateString, args, this.template)
+    }
+
     createContentElements(): Node[] {
-        const content = this.template.content
+        const content = this.template.content.cloneNode(true) as DocumentFragment
         this.bindings.forEach(b => b.applyBinding(content, this.data))
         return Array.prototype.slice.call(content.childNodes)
     }
