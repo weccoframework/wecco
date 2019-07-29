@@ -74,34 +74,27 @@ export abstract class WeccoElement<T> extends HTMLElement {
     /** The render callback function that has been passed to `define` in order to render this element's content */
     protected abstract get renderCallback(): RenderCallback<T>
 
+    /** List of attribute names to observe for changes */
+    protected abstract get observedAttributes(): Array<keyof T>
+
     /** The context this element belongs to */
     eventEmitter: EmitEventCallback = () => { }
 
     /** The bound data */
-    private data: T
+    private data: T = {} as T
 
-    constructor() {
-        super()
-    }
-
-    /**
-     * Called to bind data to this element.
-     * @param data the data
-     */
-    bindData(data: T) {
-        this.data = data
-        if (this.isConnected) {
-            this.updateDom(true)
-        }
-    }
+    private connected = false
 
     /**
      * Partially updates the bound data with the data given in `data`.
      * @param data the partial data to update
      */
     setData(data: Partial<T>) {
-        Object.keys(data).forEach(k => (this.data as any)[k] = (data as any)[k])
-        if (this.isConnected) {
+        if (data) {
+            Object.keys(data).forEach(k => (this.data as any)[k] = (data as any)[k])
+        }
+
+        if (this.connected) {
             this.updateDom(true)
         }
     }
@@ -119,7 +112,16 @@ export abstract class WeccoElement<T> extends HTMLElement {
      */
     notifyUpdate: NotifyUpdateCallback = () => {
         Promise.resolve()
-            .then(this.updateDom.bind(this, true))
+            .then(() => {
+                const observed = (this as any).observedAttributes as Array<string>;
+                // const observed = Array.prototype.map.call(this.attributes, (a: Attr) => a.name)
+                Object.keys(this.data).forEach(k => {
+                    if (observed.indexOf(k) > -1) {
+                        this.setAttribute(k, (this.data as any)[k])
+                    }
+                })
+                this.updateDom(true)
+            })
     }
 
     private updateDom(removePreviousDom: boolean = false) {
@@ -172,6 +174,14 @@ export abstract class WeccoElement<T> extends HTMLElement {
             parent = parent.parentElement
         }
 
+        Array.prototype.forEach.call(this.attributes, (attr: Attr) => {
+            if (this.observedAttributes.indexOf(attr.name as any) !== -1) {
+                (this.data as any)[attr.name] = attr.value
+            }
+        })
+
+        this.connected = true
+
         this.updateDom()
     }
 
@@ -181,6 +191,16 @@ export abstract class WeccoElement<T> extends HTMLElement {
     disconnectedCallback() {
         this.eventEmitter = () => { }
         this.childNodes.forEach(this.removeChild.bind(this))
+        this.connected = false
+    }
+
+    /**
+     * (Life cycle method)[https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_custom_elements#Using_the_lifecycle_callbacks] for the custom element.
+     */
+    attributeChangedCallback(name: string, oldValue: any, newValue: any) {
+        const object = {} as any
+        object[name] = newValue
+        this.setData(object as Partial<T>)
     }
 }
 
@@ -189,11 +209,21 @@ export abstract class WeccoElement<T> extends HTMLElement {
  * The render callback provided to define will be called whenever the element`s content needs to be updated.
  * @param name the name of the custom element. Must follow the custom element specs (i.e. the name must contain a dash)
  * @param renderCallback the render callback
+ * @param observedAttributes list of attribute names to observe for changes and bind to data
  * @returns an instance of a `ComponentFactory` which can produce instances of the defined component
  */
-export function define<T>(name: string, renderCallback: RenderCallback<T>): ComponentFactory<T> {
+export function define<T>(name: string, renderCallback: RenderCallback<T>, observedAttributes?: Array<keyof T> | keyof T): ComponentFactory<T> {
+    const observedAttributesValue: Array<keyof T> = Array.isArray(observedAttributes) ? observedAttributes : !observedAttributes ? [] : [observedAttributes]
     window.customElements.define(name, class extends WeccoElement<T> {
         protected renderCallback = renderCallback
+        protected observedAttributes = observedAttributesValue
+
+        /**
+         * Getter used to retrieve the list of attribute names to watch for changes.
+         */
+        static get observedAttributes() {
+            return observedAttributesValue
+        }
     })
     return component.bind(null, name)
 }
@@ -233,7 +263,7 @@ export function component<T>(componentName: string, data?: T, host?: string | El
         return
     }
 
-    el.bindData(data)
+    el.setData(data)
 
     if (host != null) {
         el.mount(host)

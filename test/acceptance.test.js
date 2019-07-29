@@ -119,25 +119,25 @@ describe("@wecco/core", () => {
     })
 
     it("should render static text", async () => {
-        page.evaluate(() => wecco.define("test-component", () => "<p>test</p>")().mount("#app"))
+        await page.evaluate(() => wecco.define("test-component", () => "<p>test</p>")().mount("#app"))
         const text = await page.$eval("#app p", e => e.innerText)
         expect(text).toBe("test")
     })
 
     it("should render dynamic text", async () => {
-        page.evaluate(() => wecco.define("test-component", (data) => `<p>${data.m}</p>`)({ m: "hello, world" }).mount("#app"))
+        await page.evaluate(() => wecco.define("test-component", (data) => `<p>${data.m}</p>`)({ m: "hello, world" }).mount("#app"))
         const text = await page.$eval("#app p", e => e.innerText)
         expect(text).toBe("hello, world")
     })
 
     it("should render dynamic text using tagged text", async () => {
-        page.evaluate(() => wecco.define("test-component", (data) => wecco.html`<p>${data.m}</p>`)({ m: "hello, world" }).mount("#app"))
+        await page.evaluate(() => wecco.define("test-component", (data) => wecco.html`<p>${data.m}</p>`)({ m: "hello, world" }).mount("#app"))
         const text = await page.$eval("#app p", e => e.innerText)
         expect(text).toBe("hello, world")
     })
 
     it("should render interactive element", async () => {
-        page.evaluate(() => wecco
+        await page.evaluate(() => wecco
             .define("test-component",
                 (data, notifyUpdate) => wecco.html`<button @click=${() => { data.c++; notifyUpdate() }}>${data.c}</button>`)({ c: 0 }).mount("#app"))
         let text = await page.$eval("#app button", e => e.innerText)
@@ -148,7 +148,7 @@ describe("@wecco/core", () => {
     })
 
     it("should rerender component when setData is called", async () => {
-        page.evaluate(() => {
+        await page.evaluate(() => {
             const c = wecco.define("test-component", data => wecco.html`<p>${data.c} ${data.m}</p>`)
             const e = c({ c: 0, m: "times" })
             e.mount("#app")
