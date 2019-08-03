@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+</head>
+
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12">
+                <hello-wecco message="Hello, world of wecco" />
+            </div>
+        </div>
+    </div>
+
+    <script src="https://bitbucket.org/wecco/core/downloads/wecco-core-0.4.0.umd.js"></script>
+    <!-- <script src="./core/dist/wecco-core.umd.js"></script> -->
+    <script>
+        wecco.define("hello-wecco", (data, notifyUpdate) => {
+            if (data.message !== "Test") {
+                setTimeout(() => {
+                    data.message = "Test"
+                    notifyUpdate()
+                }, 2000)
+            }
+            return wecco.html`<h1>${data.message}</h1>`
+        }, "message")
+    </script>
+</body>
+
+</html>
