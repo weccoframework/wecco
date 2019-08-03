@@ -132,9 +132,10 @@ const TodoItemView = wecco.define("todo-item", (data: TodoItemData, notifyUpdate
     const remove = () => { emit(TodoEvents.Deleted, data.item) }
     const onChange = (e: Event) => {
         data.item.summary = (<HTMLInputElement>e.target).value
-        data.editable = false
         emit(TodoEvents.Modified, data.item)
     }
+
+    console.log(data)
 
     return wecco.html`
     <div class="card">
@@ -156,22 +157,14 @@ const TodoItemView = wecco.define("todo-item", (data: TodoItemData, notifyUpdate
     </div>`
 })
 
-const TodoItemListView = wecco.define("todo-list", (data: TodoData, notifyUpdate) => {
-    const addItem = () => {
-        data.items.push({
-            item: new TodoItem(""),
-            editable: true,
-        })
-        notifyUpdate()
-    }
-
+const TodoItemListView = wecco.define("todo-list", (data: TodoData, _, emit) => {
     return wecco.html`
         <h3>${data.title || "Todos"}</h3>
         <div>
         ${data.items.map(i => TodoItemView(i))}
         </div>
         <div class="mt-2 text-right">
-            <button class="waves-effect waves-light btn" @click=${addItem}><i class="material-icons">add</i></button>
+            <button class="waves-effect waves-light btn" @click=${() => emit(TodoEvents.Add)}><i class="material-icons">add</i></button>
         </div>
     `
 })
@@ -188,10 +181,13 @@ class TodoApp implements wecco.Controller {
     }
 
     handleEvent(event: string, payload: any, render: wecco.ControllerRenderCallback) {
-        let items: TodoItemData[]
         switch (event) {
             case TodoEvents.Add:
                 this.items.push({ item: new TodoItem(""), editable: true })
+                break
+
+            case TodoEvents.Modified:
+                this.items.find(i => i.item === payload).editable = false
                 break
 
             case TodoEvents.Deleted:
