@@ -10,24 +10,46 @@
 <body>
     <div class="container">
         <div class="row">
-            <div class="col-md-12">
+            <div class="col-md-6">
                 <hello-wecco message="Hello, world of wecco" />
+            </div>
+            <div class="col-md-6">
+                <count-clicks />
             </div>
         </div>
     </div>
 
-    <script src="https://bitbucket.org/wecco/core/downloads/wecco-core-0.4.0.umd.js"></script>
-    <!-- <script src="./core/dist/wecco-core.umd.js"></script> -->
+    <!-- <script src="https://bitbucket.org/wecco/core/downloads/wecco-core-0.4.0.umd.js"></script> -->
+    <script src="../dist/wecco-core.umd.js"></script>
     <script>
-        wecco.define("hello-wecco", (data, notifyUpdate) => {
+        wecco.define("hello-wecco", (data, context) => {
             if (data.message !== "Test") {
                 setTimeout(() => {
                     data.message = "Test"
-                    notifyUpdate()
+                    context.requestUpdate()
                 }, 2000)
             }
             return wecco.html`<h1>${data.message}</h1>`
         }, "message")
+    </script>
+
+    <script>
+        wecco.define("my-button", (data, context) => {
+            return wecco.html`<button @click=${() => context.emit("click")}>${data.label}</button>`
+        }, "label")
+
+        wecco.define("count-clicks", (data, context) => {
+            data.count = data.count || 0
+            context.addEventListener("click", () => {
+                data.count++
+                context.requestUpdate()
+            })
+
+            return wecco.html`
+                <p>You clicked me ${data.count} times.</p>
+                <my-button label="Increment counter"/>
+            `
+        })
     </script>
 </body>
 

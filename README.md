@@ -30,9 +30,9 @@ interface CountClicks {
     count: number
 }
 
-const CountClicks = wecco.define("count-clicks", (data: CountClicks, notifyUpdate) => {
+const CountClicks = wecco.define("count-clicks", (data: CountClicks, context) => {
     return wecco.html`<p>
-        <button class="waves-effect waves-light btn" data-count=${data.count} @click=${() => { data.count++; notifyUpdate(); }}>
+        <button class="waves-effect waves-light btn" data-count=${data.count} @click=${() => { data.count++; context.notifyUpdate(); }}>
             You clicked me ${data.count} times
         </button>
     </p>`

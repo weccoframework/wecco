@@ -139,7 +139,7 @@ describe("@wecco/core", () => {
     it("should render interactive element", async () => {
         await page.evaluate(() => wecco
             .define("test-component",
-                (data, notifyUpdate) => wecco.html`<button @click=${() => { data.c++; notifyUpdate() }}>${data.c}</button>`)({ c: 0 }).mount("#app"))
+                (data, context) => wecco.html`<button @click=${() => { data.c++; context.requestUpdate() }}>${data.c}</button>`)({ c: 0 }).mount("#app"))
         let text = await page.$eval("#app button", e => e.innerText)
         expect(text).toBe("0");
         await (await page.$("#app button")).click()
@@ -156,5 +156,89 @@ describe("@wecco/core", () => {
         })
         text = await page.$eval("#app p", e => e.innerText)
         expect(text).toBe("1 times")
+    })
+
+    it("should bind html attribute values to data properties", async () => {
+        await page.evaluate(() => {
+            wecco.define("test-component", data => wecco.html`<p>${data.text}</p>`, "text")
+            document.querySelector("#app").innerHTML = "<test-component text='foo bar'></test-component>"
+        })
+        text = await page.$eval("#app p", e => e.innerText)
+        expect(text).toBe("foo bar")
+    })
+
+    it("should bind data property changes to html attribute values", () => {
+        return page.evaluate(() => {
+            wecco.define("test-component", (data, context) => {
+                if (data.text !== "changed") {
+                    setTimeout(() => {
+                        data.text = "changed"
+                        context.requestUpdate()
+                    }, 1)
+                }
+                return wecco.html`<p>${data.text}</p>`
+            }, "text")
+            document.querySelector("#app").innerHTML = "<test-component text='foo bar'></test-component>"
+        })
+            .then(() => {
+                return new Promise(resolve => setTimeout(resolve, 10))
+            })
+            .then(() => page.$eval("#app test-component", e => e.getAttribute("text")))
+            .then(text => expect(text).toBe("changed"))
+    })
+
+    it("should emit custom events", () => {
+        return page.evaluate(() => {
+            window._receivedEvent = null
+            document.addEventListener("weccoEvent", e => {
+                window._receivedEvent = e.detail
+            })
+            wecco.define("test-component", (data, context) => {
+                if (!data.send) {
+                    setTimeout(() => {
+                        data.send = true
+                        context.emit("test", "foobar")
+                        context.requestUpdate()
+                    }, 1)
+                }
+                return "test"
+            })
+            document.querySelector("#app").innerHTML = "<test-component></test-component>"
+        })
+            .then(() => {
+                return new Promise(resolve => setTimeout(resolve, 10))
+            })
+            .then(() => page.evaluate(() => window._receivedEvent))
+            .then(detail => expect(detail.name).toBe("test") && expect(detail.payload).toBe("foobar"))
+    })
+
+    it("should emit and subscribe for custom events", () => {
+        return page.evaluate(() => {
+            wecco.define("my-button", (data, context) => {
+                return wecco.html`<button @click=${() => context.emit("click")}>${data.label}</button>`
+            }, "label")
+
+            wecco.define("count-clicks", (data, context) => {
+                data.count = data.count || 0
+                context.addEventListener("click", () => {
+                    data.count++
+                    context.requestUpdate()
+                })
+
+                return wecco.html`
+                <p>You clicked me ${data.count} times.</p>
+                <my-button label="Increment counter"/>
+            `
+            })
+
+            document.querySelector("#app").innerHTML = "<count-clicks/>"
+        })
+            .then(() => {
+                return page.evaluate(() => {
+                    document.querySelector("button").dispatchEvent(new MouseEvent("click"))
+                })
+            })
+            .then(() => page.$eval("#app count-clicks p", e => e.innerText))
+            .then(text => expect(text).toBe("You clicked me 1 times."))
     })
 }) 

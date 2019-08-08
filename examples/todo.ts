@@ -20,19 +20,14 @@ export interface DatePickerData {
     noDateSelectedMessage?: string
 }
 
-/**
- * A render callback to be passed to `wecco.define` to define a custom component that provides browser built-in date editing.
- * @param data
- * @param notifyUpdate 
- */
-const DatePicker = wecco.define("wecco-data-picker", (data: DatePickerData, notifyUpdate: wecco.NotifyUpdateCallback) => {
+const DatePicker = wecco.define("wecco-data-picker", (data: DatePickerData, context: wecco.RenderContext) => {
     data.formatter = data.formatter || ((d: Date) => d.toDateString())
     data.noDateSelectedMessage = data.noDateSelectedMessage || "No date selected"
 
     if (!data.inEdit) {
         const selectDate = (e: Event) => {
             data.inEdit = true
-            notifyUpdate()
+            context.requestUpdate()
         }
 
         return wecco.html`<a href="#" @click=${selectDate}>${data.value !== null ? data.formatter.call(null, data.value) : data.noDateSelectedMessage}</a>`
@@ -55,7 +50,7 @@ const DatePicker = wecco.define("wecco-data-picker", (data: DatePickerData, noti
                 return Promise.resolve()
             })
 
-            .then(notifyUpdate)
+            .then(context.requestUpdate.bind(context))
     }
 
     let inputValue = ""
@@ -106,7 +101,6 @@ class TodoItemStore {
             const data = JSON.parse(jsonData)
             return data.map((d: any) => new TodoItem(d.s, d.d, d.u ? new Date(d.u) : null))
         } catch (e) {
-            console.error(e)
             window.localStorage.setItem(this.key, "")
             return []
         }
@@ -127,15 +121,13 @@ class TodoItemStore {
 
 // -- Components
 
-const TodoItemView = wecco.define("todo-item", (data: TodoItemData, notifyUpdate, emit) => {
-    const markAsDone = () => { data.item.done = true; emit(TodoEvents.Modified, data.item) }
-    const remove = () => { emit(TodoEvents.Deleted, data.item) }
+const TodoItemView = wecco.define("todo-item", (data: TodoItemData, context) => {
+    const markAsDone = () => { data.item.done = true; context.emit(TodoEvents.Modified, data.item) }
+    const remove = () => { context.emit(TodoEvents.Deleted, data.item) }
     const onChange = (e: Event) => {
         data.item.summary = (<HTMLInputElement>e.target).value
-        emit(TodoEvents.Modified, data.item)
+        context.emit(TodoEvents.Modified, data.item)
     }
-
-    console.log(data)
 
     return wecco.html`
     <div class="card">
@@ -148,7 +140,7 @@ const TodoItemView = wecco.define("todo-item", (data: TodoItemData, notifyUpdate
         value: data.item.dueDate,
         onChange: (d: Date) => {
             data.item.dueDate = d
-            emit(TodoEvents.Modified, data.item)
+            context.emit(TodoEvents.Modified, data.item)
         },
         noDateSelectedMessage: "Select due date"
     })}
@@ -157,14 +149,14 @@ const TodoItemView = wecco.define("todo-item", (data: TodoItemData, notifyUpdate
     </div>`
 })
 
-const TodoItemListView = wecco.define("todo-list", (data: TodoData, _, emit) => {
+const TodoItemListView = wecco.define("todo-list", (data: TodoData, context) => {
     return wecco.html`
         <h3>${data.title || "Todos"}</h3>
         <div>
         ${data.items.map(i => TodoItemView(i))}
         </div>
         <div class="mt-2 text-right">
-            <button class="waves-effect waves-light btn" @click=${() => emit(TodoEvents.Add)}><i class="material-icons">add</i></button>
+            <button class="waves-effect waves-light btn" @click=${() => context.emit(TodoEvents.Add)}><i class="material-icons">add</i></button>
         </div>
     `
 })

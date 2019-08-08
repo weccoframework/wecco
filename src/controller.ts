@@ -17,7 +17,9 @@
  */
 
 import { ElementSelector, resolve, removeAllChildren } from "./dom"
-import { WeccoElement, EmitEventCallback } from "./element"
+import { WeccoCustomEventName, WeccoCustomEventDetails, WeccoElement } from "./element"
+
+export type EmitEventCallback = (eventName: string, payload: any) => void
 
 /**
  * Name of the event that is dispatched after the controller has been initialized.
@@ -58,6 +60,12 @@ export function controller(host: ElementSelector, handler: ControllerInstance) {
 class ControllerWrapper {
     constructor(private host: Element, private handler: ControllerInstance) {
         this.dispatchEvent(ControllerEventInit)
+        this.host.addEventListener(WeccoCustomEventName, (e: CustomEvent) => {
+            e.preventDefault()
+            e.stopPropagation()
+            const eventData: WeccoCustomEventDetails = e.detail
+            this.dispatchEvent(eventData.name, eventData.payload)
+        }, false)
     }
 
     emit = (event: string, payload: any): void => {
@@ -70,9 +78,6 @@ class ControllerWrapper {
         if (typeof content === "string") {
             this.host.innerHTML = content
         } else {
-            if (content instanceof WeccoElement) {
-                content.eventEmitter = this.emit
-            }
             this.host.appendChild(content)
         }
     }

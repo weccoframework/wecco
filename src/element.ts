@@ -17,6 +17,7 @@
  */
 
 import { ElementSelector, resolve, removeAllChildren } from "./dom"
+import { emit } from "cluster";
 
 /**
  * `BindElementCallback` defines a type used by functions that apply elements to another element.
@@ -40,11 +41,6 @@ export interface ContentProducer {
 export type NotifyUpdateCallback = () => void
 
 /**
- * `EmitEventCallback` defines the type of functions that emit an event.
- */
-export type EmitEventCallback = (event: string, payload?: any) => void
-
-/**
  * `RenderResult` defines the type of data returned from a `RenderCallback`.
  * 
  * It is one of the following
@@ -56,15 +52,50 @@ export type EmitEventCallback = (event: string, payload?: any) => void
 export type RenderResult = string | Node | BindElementCallback | ContentProducer
 
 /**
+ * `RenderContext` specifies the type for context objects that allow an element to interact
+ * with it's surrounding context.
+ */
+export interface RenderContext {
+    /**
+     * `requestUpdate` notifies the component to update it's DOM representation (normally due do a change
+     * of a a `data` field).
+     */
+    requestUpdate(): RenderContext
+
+    /**
+    * `emit` emits a `CustomEvent` that bubbles up the DOM element hierarchy
+    */
+    emit(event: string, payload?: any): RenderContext
+
+    /**
+     * `addEventListener` subscribes for `CustomEvents` emitted via `emit`.
+     */
+    addEventListener(event: string, listener: (payload?: any) => void): RenderContext
+}
+
+/**
  * `RenderCallback` defins the type for functions that are passed to `define` in order to produce an element's content
  */
-export type RenderCallback<T> = (data: T, updater: NotifyUpdateCallback, emit: EmitEventCallback) => RenderResult
+export type RenderCallback<T> = (data: T, context: RenderContext) => RenderResult
 
 /**
  * Type definition for a factory function that gets returned from `define` as a convenience function
  * to create new instances of the defined component.
  */
 export type ComponentFactory<T> = (data?: T, host?: string | Element) => WeccoElement<T>
+
+/**
+ * Name of the `CustomEvent` emitted when using `WeccoElement`'s built-in eventing mechanism.
+ */
+export const WeccoCustomEventName = "weccoEvent"
+
+/**
+ * Interface describing the type of `details` objects sent with custom events.
+ */
+export interface WeccoCustomEventDetails {
+    name: string,
+    payload?: any,
+}
 
 /**
  * `WeccoElement` defines the base class for all custom elements created by wecco.
@@ -77,13 +108,17 @@ export abstract class WeccoElement<T> extends HTMLElement {
     /** List of attribute names to observe for changes */
     protected abstract get observedAttributes(): Array<keyof T>
 
-    /** The context this element belongs to */
-    eventEmitter: EmitEventCallback = () => { }
-
     /** The bound data */
     private data: T = {} as T
 
+    /** Flag that marks whether this component is connected to the DOM or not. */
     private connected = false
+
+    /** Listeners for events */
+    private eventListeners = new Map<string, Array<(payload?: any) => void>>()
+
+    /** The render context instance to use */
+    private renderContext: RenderContext = new WeccoElementRenderContext(this)
 
     /**
      * Partially updates the bound data with the data given in `data`.
@@ -110,11 +145,10 @@ export abstract class WeccoElement<T> extends HTMLElement {
     /**
      * Callback to invoke in order to trigger an update of this element
      */
-    notifyUpdate: NotifyUpdateCallback = () => {
+    requestUpdate = () => {
         Promise.resolve()
             .then(() => {
                 const observed = (this as any).observedAttributes as Array<string>;
-                // const observed = Array.prototype.map.call(this.attributes, (a: Attr) => a.name)
                 Object.keys(this.data).forEach(k => {
                     if (observed.indexOf(k) > -1) {
                         this.setAttribute(k, (this.data as any)[k])
@@ -122,11 +156,79 @@ export abstract class WeccoElement<T> extends HTMLElement {
                 })
                 this.updateDom(true)
             })
+        return this
+    }
+
+    emit = (eventName: string, payload?: any) => {
+        const event = new CustomEvent(WeccoCustomEventName, {
+            detail: {
+                name: eventName,
+                payload: payload,
+            },
+            bubbles: true,
+            cancelable: true,
+            composed: true, // Enables bubbling beyond shadow root
+        })
+        this.dispatchEvent(event)
+    }
+
+    addCustomEventListener(event: string, listener: (payload?: any) => void) {
+        if (!this.eventListeners.has(event)) {
+            this.eventListeners.set(event, [])
+        }
+
+        this.eventListeners.get(event).push(listener)
+    }
+
+    /**
+     * (Life cycle method)[https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_custom_elements#Using_the_lifecycle_callbacks] for the custom element.
+     */
+    connectedCallback() {
+        Array.prototype.forEach.call(this.attributes, (attr: Attr) => {
+            if (this.observedAttributes.indexOf(attr.name as any) !== -1) {
+                (this.data as any)[attr.name] = attr.value
+            }
+        })
+
+        super.addEventListener(WeccoCustomEventName, this.handleWeccoEvent)
+
+        this.connected = true
+
+        this.updateDom()
+    }
+
+    /**
+     * (Life cycle method)[https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_custom_elements#Using_the_lifecycle_callbacks] for the custom element.
+     */
+    disconnectedCallback() {
+        this.childNodes.forEach(this.removeChild.bind(this))
+        this.removeEventListener(WeccoCustomEventName, this.handleWeccoEvent)
+        this.connected = false
+    }
+
+    /**
+     * (Life cycle method)[https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_custom_elements#Using_the_lifecycle_callbacks] for the custom element.
+     */
+    attributeChangedCallback(name: string, oldValue: any, newValue: any) {
+        const object = {} as any
+        object[name] = newValue
+        this.setData(object as Partial<T>)
+    }
+
+    private handleWeccoEvent = (e: CustomEvent) => {
+        const { name, payload } = e.detail
+
+        if (!this.eventListeners.has(name)) {
+            return
+        }
+
+        e.preventDefault()
+        e.stopPropagation()
+
+        this.eventListeners.get(name).forEach(listener => listener(payload))
     }
 
     private updateDom(removePreviousDom: boolean = false) {
-        // TODO: Optimize by traversing and comparing elements
-
         if (removePreviousDom) {
             let host: Node
 
@@ -139,7 +241,9 @@ export abstract class WeccoElement<T> extends HTMLElement {
             removeAllChildren(host)
         }
 
-        const elementBody = this.renderCallback(this.data || ({} as T), this.notifyUpdate, this.eventEmitter)
+        this.eventListeners.clear()
+
+        const elementBody = this.renderCallback(this.data || ({} as T), this.renderContext)
 
         if (elementBody) {
             if (typeof elementBody === "string") {
@@ -155,53 +259,39 @@ export abstract class WeccoElement<T> extends HTMLElement {
             }
         }
     }
+}
+
+/**
+ * Implementation of `RenderContext` for a `WeccoElement`
+ */
+class WeccoElementRenderContext<T> implements RenderContext {
+    constructor(private component: WeccoElement<T>) { }
 
     /**
-     * (Life cycle method)[https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_custom_elements#Using_the_lifecycle_callbacks] for the custom element.
+     * `requestUpdate` notifies the component to update it's DOM representation (normally due do a change
+     * of a a `data` field).
      */
-    connectedCallback() {
-        let parent = this.parentElement
-        while (parent !== null) {
-            if (parent === document.body) {
-                break
-            }
-
-            if (parent instanceof WeccoElement) {
-                this.eventEmitter = parent.eventEmitter
-                break
-            }
-
-            parent = parent.parentElement
-        }
-
-        Array.prototype.forEach.call(this.attributes, (attr: Attr) => {
-            if (this.observedAttributes.indexOf(attr.name as any) !== -1) {
-                (this.data as any)[attr.name] = attr.value
-            }
-        })
-
-        this.connected = true
-
-        this.updateDom()
+    requestUpdate(): RenderContext {
+        this.component.requestUpdate()
+        return this
     }
 
     /**
-     * (Life cycle method)[https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_custom_elements#Using_the_lifecycle_callbacks] for the custom element.
-     */
-    disconnectedCallback() {
-        this.eventEmitter = () => { }
-        this.childNodes.forEach(this.removeChild.bind(this))
-        this.connected = false
+    * `emit` emits a `CustomEvent` that bubbles up the DOM element hierarchy
+    */
+    emit(event: string, payload?: any): RenderContext {
+        this.component.emit(event, payload)
+        return this
     }
 
     /**
-     * (Life cycle method)[https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_custom_elements#Using_the_lifecycle_callbacks] for the custom element.
+     * `addEventListener` subscribes for `CustomEvents` emitted via `emit`.
      */
-    attributeChangedCallback(name: string, oldValue: any, newValue: any) {
-        const object = {} as any
-        object[name] = newValue
-        this.setData(object as Partial<T>)
+    addEventListener(event: string, listener: (payload?: any) => void): RenderContext {
+        this.component.addCustomEventListener(event, listener)
+        return this
     }
+
 }
 
 /**
@@ -236,7 +326,7 @@ export function define<T>(name: string, renderCallback: RenderCallback<T>, obser
  * The following two snippets as essentially the same:
  * 
  * ```typescript
- * const SomeComponent = define("some-component", (data: SomeComponentData, notifyUpdate) => {
+ * const SomeComponent = define("some-component", (data: SomeComponentData, requestUpdate) => {
  *      // ..
  * })
  * 
@@ -244,7 +334,7 @@ export function define<T>(name: string, renderCallback: RenderCallback<T>, obser
  * ```
  * vs.
  * ```typescript
- * define("some-component", (data: SomeComponentData, notifyUpdate) => {
+ * define("some-component", (data: SomeComponentData, requestUpdate) => {
  *      // ..
  * })
  * 
