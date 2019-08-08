@@ -11,12 +11,24 @@
 
 `wecco` is written using [TypeScript](https://www.typescriptlang.org/). The type definitions allow an IDE to provide valuable hints of function's parameters and return types. Nevertheless `wecco` can be used with plain Javascript as well.
 
+_wecco is stil under heavy development and the API is not considered stable until release 1.0.0._
+
 ## Installation
+
+### NPM
 
 Currently, wecco is not published to any npm registry, but you can install it using the full download URL:
 
 ```bash
 $ npm i @wecco/core@https://bitbucket.org/wecco/core/downloads/wecco-core-0.1.0.tgz
+```
+
+### Via Bitbucket Downloads
+
+Directly include the bundled version of wecco into your HTML document:
+
+```html
+<script src="https://bitbucket.org/wecco/core/downloads/wecco-core-0.5.0.umd.js"></script>
 ```
 
 ## Usage

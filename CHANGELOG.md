@@ -1,5 +1,11 @@
 # Changelog
 
+# Version 0.5.0
+
+**Breaking Change**: Changed signature of render callback.
+
+* Added support for element events send via HTML `CustomEvent` objects.
+
 # Version 0.4.0
 
 * Added caching support for HTML rendered using backticks and custom string tag

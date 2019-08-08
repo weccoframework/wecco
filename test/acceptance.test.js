@@ -136,15 +136,17 @@ describe("@wecco/core", () => {
         expect(text).toBe("hello, world")
     })
 
-    it("should render interactive element", async () => {
-        await page.evaluate(() => wecco
+    it("should render interactive element", () => {
+        return page.evaluate(() => wecco
             .define("test-component",
                 (data, context) => wecco.html`<button @click=${() => { data.c++; context.requestUpdate() }}>${data.c}</button>`)({ c: 0 }).mount("#app"))
-        let text = await page.$eval("#app button", e => e.innerText)
-        expect(text).toBe("0");
-        await (await page.$("#app button")).click()
-        text = await page.$eval("#app button", e => e.innerText)
-        expect(text).toBe("1")
+            .then(() => page.$eval("#app button", e => e.innerText))
+            .then(text => expect(text).toBe("0"))
+            .then(() => page.$("#app button"))
+            .then(b => b.click())
+            .then(() => new Promise(resolve => setTimeout(resolve, 5)))
+            .then(() => page.$eval("#app button", e => e.innerText))
+            .then(text => expect(text).toBe("1"))
     })
 
     it("should rerender component when setData is called", async () => {
@@ -154,7 +156,7 @@ describe("@wecco/core", () => {
             e.mount("#app")
             e.setData({ c: 1 })
         })
-        text = await page.$eval("#app p", e => e.innerText)
+        const text = await page.$eval("#app p", e => e.innerText)
         expect(text).toBe("1 times")
     })
 
@@ -163,7 +165,7 @@ describe("@wecco/core", () => {
             wecco.define("test-component", data => wecco.html`<p>${data.text}</p>`, "text")
             document.querySelector("#app").innerHTML = "<test-component text='foo bar'></test-component>"
         })
-        text = await page.$eval("#app p", e => e.innerText)
+        const text = await page.$eval("#app p", e => e.innerText)
         expect(text).toBe("foo bar")
     })
 
@@ -180,9 +182,7 @@ describe("@wecco/core", () => {
             }, "text")
             document.querySelector("#app").innerHTML = "<test-component text='foo bar'></test-component>"
         })
-            .then(() => {
-                return new Promise(resolve => setTimeout(resolve, 10))
-            })
+            .then(() => new Promise(resolve => setTimeout(resolve, 10)))
             .then(() => page.$eval("#app test-component", e => e.getAttribute("text")))
             .then(text => expect(text).toBe("changed"))
     })
@@ -205,9 +205,7 @@ describe("@wecco/core", () => {
             })
             document.querySelector("#app").innerHTML = "<test-component></test-component>"
         })
-            .then(() => {
-                return new Promise(resolve => setTimeout(resolve, 10))
-            })
+            .then(() => new Promise(resolve => setTimeout(resolve, 10)))
             .then(() => page.evaluate(() => window._receivedEvent))
             .then(detail => expect(detail.name).toBe("test") && expect(detail.payload).toBe("foobar"))
     })
@@ -233,11 +231,10 @@ describe("@wecco/core", () => {
 
             document.querySelector("#app").innerHTML = "<count-clicks/>"
         })
-            .then(() => {
-                return page.evaluate(() => {
-                    document.querySelector("button").dispatchEvent(new MouseEvent("click"))
-                })
+            .then(() => page.evaluate(() => {
+                document.querySelector("button").dispatchEvent(new MouseEvent("click"))
             })
+            )
             .then(() => page.$eval("#app count-clicks p", e => e.innerText))
             .then(text => expect(text).toBe("You clicked me 1 times."))
     })

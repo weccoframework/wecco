@@ -14,7 +14,7 @@
                 <hello-wecco message="Hello, world of wecco" />
             </div>
             <div class="col-md-6">
-                <count-clicks />
+                <count-clicks count="0" />
             </div>
         </div>
     </div>
@@ -39,6 +39,7 @@
         }, "label")
 
         wecco.define("count-clicks", (data, context) => {
+            console.log("render", data)
             data.count = data.count || 0
             context.addEventListener("click", () => {
                 data.count++
@@ -49,7 +50,7 @@
                 <p>You clicked me ${data.count} times.</p>
                 <my-button label="Increment counter"/>
             `
-        })
+        }, "count")
     </script>
 </body>
 

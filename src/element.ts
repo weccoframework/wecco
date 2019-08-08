@@ -120,6 +120,9 @@ export abstract class WeccoElement<T> extends HTMLElement {
     /** The render context instance to use */
     private renderContext: RenderContext = new WeccoElementRenderContext(this)
 
+    /** Flag that marks whether an update has been requested */
+    private updateRequested = false
+
     /**
      * Partially updates the bound data with the data given in `data`.
      * @param data the partial data to update
@@ -130,7 +133,7 @@ export abstract class WeccoElement<T> extends HTMLElement {
         }
 
         if (this.connected) {
-            this.updateDom(true)
+            this.requestUpdate()
         }
     }
 
@@ -146,6 +149,22 @@ export abstract class WeccoElement<T> extends HTMLElement {
      * Callback to invoke in order to trigger an update of this element
      */
     requestUpdate = () => {
+        if (this.updateRequested) {
+            return
+        }
+
+        this.updateRequested = true
+        setTimeout(this.executeUpdate.bind(this), 1)
+    }
+
+    /**
+     * `executeUpdate` performs an update in case the dirty flag has been set.
+     */
+    private executeUpdate() {
+        if (!this.updateRequested) {
+            return
+        }
+
         Promise.resolve()
             .then(() => {
                 const observed = (this as any).observedAttributes as Array<string>;
@@ -156,7 +175,6 @@ export abstract class WeccoElement<T> extends HTMLElement {
                 })
                 this.updateDom(true)
             })
-        return this
     }
 
     emit = (eventName: string, payload?: any) => {
@@ -244,6 +262,7 @@ export abstract class WeccoElement<T> extends HTMLElement {
         this.eventListeners.clear()
 
         const elementBody = this.renderCallback(this.data || ({} as T), this.renderContext)
+        this.updateRequested = false
 
         if (elementBody) {
             if (typeof elementBody === "string") {
