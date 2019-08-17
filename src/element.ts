@@ -313,6 +313,10 @@ class WeccoElementRenderContext<T> implements RenderContext {
 
 }
 
+export function define<T>(name: string, renderCallback: RenderCallback<T>, observedAttribute: keyof T): ComponentFactory<T>
+export function define<T>(name: string, renderCallback: RenderCallback<T>, ...observedAttribute: Array<keyof T>): ComponentFactory<T>
+export function define<T>(name: string, renderCallback: RenderCallback<T>, observedAttributes: Array<keyof T>): ComponentFactory<T>
+
 /**
  * `define` is used to define a new wecco component which is also a custom element.
  * The render callback provided to define will be called whenever the element`s content needs to be updated.
@@ -321,8 +325,9 @@ class WeccoElementRenderContext<T> implements RenderContext {
  * @param observedAttributes list of attribute names to observe for changes and bind to data
  * @returns an instance of a `ComponentFactory` which can produce instances of the defined component
  */
-export function define<T>(name: string, renderCallback: RenderCallback<T>, observedAttributes?: Array<keyof T> | keyof T): ComponentFactory<T> {
-    const observedAttributesValue: Array<keyof T> = Array.isArray(observedAttributes) ? observedAttributes : !observedAttributes ? [] : [observedAttributes]
+export function define<T>(name: string, renderCallback: RenderCallback<T>, ...observedAttributes: Array<Array<keyof T> | keyof T>): ComponentFactory<T> {
+    const observedAttributesValue: Array<keyof T> = observedAttributes.map(a => Array.isArray(a) ? a : [a]).reduce((a, v) => a.concat(v), [])
+
     window.customElements.define(name, class extends WeccoElement<T> {
         protected renderCallback = renderCallback
         protected observedAttributes = observedAttributesValue

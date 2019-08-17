@@ -17,7 +17,7 @@
  */
 
 import { expect } from "iko"
-import { html } from "../src/html"
+import { html } from "../../src/html"
 
 describe("html.ts", async () => {
     afterEach(() => {

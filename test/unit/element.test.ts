@@ -17,7 +17,7 @@
  */
 
 import { expect } from "iko"
-import { define, component, WeccoElement, ComponentFactory } from "../src/element"
+import { define, component, WeccoElement, ComponentFactory } from "../../src/element"
 
 interface ComponentData {
     s: string

@@ -31,8 +31,8 @@
     "scripts": {
         "build": "rollup -c",
         "watch": "rollup -c -w",
-        "test": "mocha --require ts-node/register --require jsdom-global/register test/**/*.spec.ts",
-        "acceptance-test": "mocha --timeout 5000 test/**/acceptance.test.js",
+        "test": "mocha --require ts-node/register --require jsdom-global/register test/unit/**/*.test.ts",
+        "acceptance-test": "mocha --timeout 5000 test/acceptance/**/*.test.js",
         "coverage": "nyc mocha"
     },
     "nyc": {
