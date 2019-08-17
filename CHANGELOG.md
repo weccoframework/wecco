@@ -1,5 +1,14 @@
 # Changelog
 
+# Version 0.7.0
+
+* `define` method accepts multiple observed attribute names as rest parameter
+
+# Version 0.6.0
+
+* Execute an element's render callback with a delay thus collecting multiple data changes into one render call
+* Fixed bug that render callback is triggered twice when an observed attribute is changed via DOM interaction
+
 # Version 0.5.0
 
 **Breaking Change**: Changed signature of render callback.
