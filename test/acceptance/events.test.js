@@ -66,8 +66,8 @@ describe("events", () => {
         })
             .then(() => fixture.page.evaluate(() => {
                 document.querySelector("button").dispatchEvent(new MouseEvent("click"))
-            })
-            )
+            }))
+            .then(() => new Promise(resolve => setTimeout(resolve, 10)))
             .then(() => fixture.page.$eval("#app count-clicks p", e => e.innerText))
             .then(text => expect(text).toBe("You clicked me 1 times."))
     })
