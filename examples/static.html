@@ -39,7 +39,6 @@
         }, "label")
 
         wecco.define("count-clicks", (data, context) => {
-            console.log("render", data)
             data.count = data.count || 0
             context.addEventListener("click", () => {
                 data.count++

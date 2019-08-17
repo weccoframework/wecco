@@ -17,8 +17,8 @@
  */
 
 import { expect } from "iko"
-import { shadow } from "../src/shadow"
-import { ContentProducer } from "../src/element";
+import { shadow } from "../../src/shadow"
+import { ContentProducer } from "../../src/element";
 
 describe("shadow.ts", async () => {
     afterEach(() => {
