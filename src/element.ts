@@ -379,7 +379,7 @@ export function component<T>(componentName: string, data?: T, host?: string | El
 
     el.setData(data)
 
-    if (host != null) {
+    if (host !== null) {
         el.mount(host)
     }
 

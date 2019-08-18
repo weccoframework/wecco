@@ -20,7 +20,8 @@
         "puppeteer": "1.17.0",
         "@types/puppeteer": "1.12.4",
         "express": "4.17.1",
-        "@types/express": "4.16.1"
+        "@types/express": "4.16.1",
+        "tslint": "5.18.0"
     },
     "main": "dist/wecco-core.umd.js",
     "module": "dist/wecco-core.es5.js",
@@ -33,7 +34,8 @@
         "watch": "rollup -c -w",
         "test": "mocha --require ts-node/register --require jsdom-global/register test/unit/**/*.test.ts",
         "acceptance-test": "mocha --timeout 5000 test/acceptance/**/*.test.js",
-        "coverage": "nyc mocha"
+        "coverage": "nyc mocha",
+        "lint": "tslint -p tslint.json"
     },
     "nyc": {
         "include": [
