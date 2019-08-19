@@ -21,7 +21,7 @@ const { fixture: fixture } = require("./fixture.test")
 const { sleep } = require("./sleep")
 
 describe("context", () => {
-    it.only("should execute callback given to context.once just once", async () => {
+    it("should execute callback given to context.once just once", async () => {
         await fixture.page.evaluate(() => {
             window.onceCallbackInvoked = 0
             wecco.define("test-component", (data, context) => {
