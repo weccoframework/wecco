@@ -18,6 +18,7 @@
 
 const { expect } = require("iko")
 const { fixture: fixture } = require("./fixture.test")
+const { sleep } = require("./sleep")
 
 describe("attributes", () => {
     it("should bind html attribute values to data properties", async () => {
@@ -47,8 +48,8 @@ describe("attributes", () => {
         expect(text).toBe("foobar")
     })
 
-    it("should bind data property changes to html attribute values", () => {
-        return fixture.page.evaluate(() => {
+    it("should bind data property changes to html attribute values", async () => {
+        await fixture.page.evaluate(() => {
             wecco.define("test-component", (data, context) => {
                 if (data.text !== "changed") {
                     setTimeout(() => {
@@ -60,8 +61,16 @@ describe("attributes", () => {
             }, "text")
             document.querySelector("#app").innerHTML = "<test-component text='foo bar'></test-component>"
         })
-            .then(() => new Promise(resolve => setTimeout(resolve, 10)))
-            .then(() => fixture.page.$eval("#app test-component", e => e.getAttribute("text")))
-            .then(text => expect(text).toBe("changed"))
+
+        let text = ""
+        while (true) {
+            await sleep(10)
+            text = await fixture.page.$eval("#app test-component", e => e.getAttribute("text"))
+            if (text === "changed") {
+                break
+            }
+        }
+
+        expect(text).toBe("changed")
     })
 })
