@@ -18,13 +18,14 @@
 
 const { expect } = require("iko")
 const { fixture: fixture } = require("./fixture.test")
+const { sleep } = require("./sleep")
 
 describe("context", () => {
-    it.only("should execute callback given to context.once just once", () => {
-        return fixture.page.evaluate(() => {
+    it.only("should execute callback given to context.once just once", async () => {
+        await fixture.page.evaluate(() => {
             window.onceCallbackInvoked = 0
             wecco.define("test-component", (data, context) => {
-                context.once(() => {
+                context.once("initializer", () => {
                     window.onceCallbackInvoked++
                 })
 
@@ -41,8 +42,16 @@ describe("context", () => {
             })
             document.querySelector("#app").innerHTML = "<test-component></test-component>"
         })
-            .then(() => new Promise(resolve => setTimeout(resolve, 100)))
-            .then(() => fixture.page.$eval("#app", e => e.innerText))
-            .then(text => expect(text).toBe("count: 10; onceCallbackInvoked: 1"))
+
+        let text = ""
+        while (true) {
+            await sleep(10)
+            text = await fixture.page.$eval("#app", e => e.innerText)
+            if (text.startsWith("count: 10")) {
+                break
+            }
+        }
+
+        expect(text).toBe("count: 10; onceCallbackInvoked: 1")
     })
 })
