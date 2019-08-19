@@ -1,5 +1,9 @@
 # Changelog
 
+# Version 0.8.0
+
+* `context` Parameter supports `once` helper method
+
 # Version 0.7.0
 
 * `define` method accepts multiple observed attribute names as rest parameter
