@@ -17,7 +17,7 @@
  */
 
 import { ElementSelector, resolve, removeAllChildren } from "./dom"
-import { emit } from "cluster";
+import { emit, once } from "cluster";
 
 /**
  * `BindElementCallback` defines a type used by functions that apply elements to another element.
@@ -52,6 +52,11 @@ export type NotifyUpdateCallback = () => void
 export type RenderResult = string | Node | BindElementCallback | ContentProducer
 
 /**
+ * Type for callback functions provided to `RenderContext.once`.
+ */
+export type OnceCallback = () => void
+
+/**
  * `RenderContext` specifies the type for context objects that allow an element to interact
  * with it's surrounding context.
  */
@@ -71,6 +76,14 @@ export interface RenderContext {
      * `addEventListener` subscribes for `CustomEvents` emitted via `emit`.
      */
     addEventListener(event: string, listener: (payload?: any) => void): RenderContext
+
+    /**
+     * `once` provides a way to execute a given callback once and just once no matter how
+     * often the render callback gets called.
+     * @param id a unique id used to identify the callback
+     * @param callback the callback to execute once
+     */
+    once(id: string, callback: OnceCallback): RenderContext
 }
 
 /**
@@ -123,6 +136,11 @@ export abstract class WeccoElement<T> extends HTMLElement {
     /** Flag that marks whether an update has been requested */
     private updateRequested = false
 
+    /** 
+     * A set of ids of callbacks provided to `RenderContext.once` that have been executed.
+     */
+    private executedOnceCallbackIds = new Set<string>()
+
     /**
      * Partially updates the bound data with the data given in `data`.
      * @param data the partial data to update
@@ -155,26 +173,6 @@ export abstract class WeccoElement<T> extends HTMLElement {
 
         this.updateRequested = true
         setTimeout(this.executeUpdate.bind(this), 1)
-    }
-
-    /**
-     * `executeUpdate` performs an update in case the dirty flag has been set.
-     */
-    private executeUpdate() {
-        if (!this.updateRequested) {
-            return
-        }
-
-        Promise.resolve()
-            .then(() => {
-                const observed = (this as any).observedAttributes as Array<string>;
-                Object.keys(this.data).forEach(k => {
-                    if (observed.indexOf(k) > -1) {
-                        this.setAttribute(k, (this.data as any)[k])
-                    }
-                })
-                this.updateDom(true)
-            })
     }
 
     emit = (eventName: string, payload?: any) => {
@@ -233,6 +231,39 @@ export abstract class WeccoElement<T> extends HTMLElement {
         this.setData(object as Partial<T>)
     }
 
+    registerOnceCallback(id: string, callback: OnceCallback) {
+        if (this.executedOnceCallbackIds.has(id)) {
+            return
+        }
+
+        this.executedOnceCallbackIds.add(id)
+
+        Promise.resolve()
+            .then(() => {
+                callback()
+            })
+    }
+
+    /**
+     * `executeUpdate` performs an update in case the dirty flag has been set.
+     */
+    private executeUpdate() {
+        if (!this.updateRequested) {
+            return
+        }
+
+        Promise.resolve()
+            .then(() => {
+                const observed = (this as any).observedAttributes as Array<string>;
+                Object.keys(this.data).forEach(k => {
+                    if (observed.indexOf(k) > -1) {
+                        this.setAttribute(k, (this.data as any)[k])
+                    }
+                })
+                this.updateDom(true)
+            })
+    }
+
     private handleWeccoEvent = (e: CustomEvent) => {
         const { name, payload } = e.detail
 
@@ -286,31 +317,25 @@ export abstract class WeccoElement<T> extends HTMLElement {
 class WeccoElementRenderContext<T> implements RenderContext {
     constructor(private component: WeccoElement<T>) { }
 
-    /**
-     * `requestUpdate` notifies the component to update it's DOM representation (normally due do a change
-     * of a a `data` field).
-     */
     requestUpdate(): RenderContext {
         this.component.requestUpdate()
         return this
     }
 
-    /**
-    * `emit` emits a `CustomEvent` that bubbles up the DOM element hierarchy
-    */
     emit(event: string, payload?: any): RenderContext {
         this.component.emit(event, payload)
         return this
     }
 
-    /**
-     * `addEventListener` subscribes for `CustomEvents` emitted via `emit`.
-     */
     addEventListener(event: string, listener: (payload?: any) => void): RenderContext {
         this.component.addCustomEventListener(event, listener)
         return this
     }
 
+    once(id: string, callback: OnceCallback): RenderContext {
+        this.component.registerOnceCallback(id, callback)
+        return this
+    }
 }
 
 export function define<T>(name: string, renderCallback: RenderCallback<T>, observedAttribute: keyof T): ComponentFactory<T>
