@@ -1,5 +1,9 @@
 # Changelog
 
+# Version 0.9.0
+
+* `@mount` event (see https://bitbucket.org/wecco/core/issues/1/mount-special-event)
+
 # Version 0.8.0
 
 * `context` Parameter supports `once` helper method

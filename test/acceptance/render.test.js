@@ -140,4 +140,26 @@ describe("render", () => {
             .then(() => fixture.page.$eval("#app count-clicks p", e => e.innerText))
             .then(text => expect(text).toBe("You clicked me 1 times."))
     })
+
+    it("should invoke @mount eventlistener after component has been mounted", async () => {
+        await fixture.page.evaluate(() => {
+            wecco.define("my-component", () => wecco.html`<span @mount=${self => self.innerText = "foo"}>bar</span>`)
+            document.querySelector("#app").innerHTML = "<my-component></my-component>"
+        })
+        const text = await fixture.page.$eval("#app span", e => e.innerText)
+        expect(text).toBe("foo")
+    })
+
+    it("should invoke @mount eventlistener after component has been updated", async () => {
+        await fixture.page.evaluate(() => {
+            const c = wecco.define("my-component", (data) => wecco.html`<span @mount=${self => self.innerText = "foo"}>${data.message}</span>`)
+            const e = c({ message: "hello" })
+            e.mount("#app")
+            e.setData({ message: "world" })
+        })
+
+        const text = await fixture.page.$eval("#app span", e => e.innerText)
+        expect(text).toBe("foo")
+    })
+
 })
