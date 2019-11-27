@@ -142,7 +142,12 @@ class AttributeBinding implements Binding {
                 return
             }
             element.removeAttribute(this.attributeName)
-            element.addEventListener(this.attributeName.substr(1), data[this.dataIndex])
+            const eventName = this.attributeName.substr(1)
+            if (eventName !== "mount") {
+                element.addEventListener(eventName, data[this.dataIndex])
+            } else {
+                element.addEventListener(eventName, data[this.dataIndex].bind(null, element))
+            }
         } else if (this.attributeName.startsWith("?")) {
             element.removeAttribute(this.attributeName)
             if (data[this.dataIndex]) {
@@ -199,7 +204,10 @@ class HtmlTemplateContentProducer implements ContentProducer {
     }
 
     render(host: HTMLElement) {
-        this.createContentElements().forEach(e => host.appendChild(e))
+        this.createContentElements().forEach(e => {
+            host.appendChild(e)
+            e.dispatchEvent(new CustomEvent("mount"))
+        })
     }
 
     private determineBindings(node: Node) {
