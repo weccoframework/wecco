@@ -144,8 +144,9 @@ export abstract class WeccoElement<T> extends HTMLElement {
     /**
      * Partially updates the bound data with the data given in `data`.
      * @param data the partial data to update
+     * @returns this to enable invocation chaining
      */
-    setData(data: Partial<T>) {
+    setData(data: Partial<T>): WeccoElement<T> {
         if (data) {
             Object.keys(data).forEach(k => (this.data as any)[k] = (data as any)[k])
         }
@@ -153,26 +154,32 @@ export abstract class WeccoElement<T> extends HTMLElement {
         if (this.connected) {
             this.requestUpdate()
         }
+
+        return this
     }
 
     /**
      * Mounts this element to the DOM node passed to this method.
      * @param elementOrSelector either the element or an selector, which gets resolved using `document.querySelector`
+     * @returns this to enable invocation chaining
      */
-    mount(elementOrSelector: ElementSelector) {
+    mount(elementOrSelector: ElementSelector): WeccoElement<T> {
         resolve(elementOrSelector).appendChild(this)
+        return this
     }
 
     /**
      * Callback to invoke in order to trigger an update of this element
+     * @returns this to enable invocation chaining
      */
-    requestUpdate = () => {
+    requestUpdate: () => WeccoElement<T> = () => {
         if (this.updateRequested) {
             return
         }
 
         this.updateRequested = true
         setTimeout(this.executeUpdate.bind(this), 1)
+        return this
     }
 
     emit = (eventName: string, payload?: any) => {
@@ -186,14 +193,16 @@ export abstract class WeccoElement<T> extends HTMLElement {
             composed: true, // Enables bubbling beyond shadow root
         })
         this.dispatchEvent(event)
+        return this
     }
 
-    addCustomEventListener(event: string, listener: (payload?: any) => void) {
+    addCustomEventListener(event: string, listener: (payload?: any) => void): WeccoElement<T> {
         if (!this.eventListeners.has(event)) {
             this.eventListeners.set(event, [])
         }
 
         this.eventListeners.get(event).push(listener)
+        return this
     }
 
     /**
