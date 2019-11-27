@@ -206,8 +206,15 @@ class HtmlTemplateContentProducer implements ContentProducer {
     render(host: HTMLElement) {
         this.createContentElements().forEach(e => {
             host.appendChild(e)
-            e.dispatchEvent(new CustomEvent("mount"))
+            this.notifyMounted(e)
         })
+    }
+
+    private notifyMounted(e: Node) {
+        e.childNodes.forEach(this.notifyMounted.bind(this))
+        e.dispatchEvent(new CustomEvent("mount", {
+            bubbles: false,
+        }))
     }
 
     private determineBindings(node: Node) {

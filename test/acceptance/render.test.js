@@ -162,4 +162,12 @@ describe("render", () => {
         expect(text).toBe("foo")
     })
 
+    it("should invoke @mount eventlistener after nested component has been mounted", async () => {
+        await fixture.page.evaluate(() => {
+            wecco.define("my-component", () => wecco.html`<div><span @mount=${self => self.innerText = "foo"}>bar</span></div>`)
+            document.querySelector("#app").innerHTML = "<my-component></my-component>"
+        })
+        const text = await fixture.page.$eval("#app div span", e => e.innerText)
+        expect(text).toBe("foo")
+    })
 })
