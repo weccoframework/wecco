@@ -71,4 +71,25 @@ describe("events", () => {
             .then(() => fixture.page.$eval("#app count-clicks p", e => e.innerText))
             .then(text => expect(text).toBe("You clicked me 1 times."))
     })
+
+    it("should emit and subscribe for custom events on same component", () => {
+        return fixture.page.evaluate(() => {
+            const b = wecco.define("my-button", (data, context) => {
+                return wecco.html`<button @click=${() => context.emit("click")}>${data.label}</button>`
+            }, "label")
+
+            document.querySelector("#app").innerHTML = "<my-button label=\"test\"></my-button>"
+        })
+            .then(() => fixture.page.evaluate(() => {
+                document.querySelector("my-button").addCustomEventListener("click", () => {
+                    document.querySelector("#app").innerHTML = "clicked"
+                })
+            }))
+            .then(() => fixture.page.evaluate(() => {
+                document.querySelector("button").dispatchEvent(new MouseEvent("click"))
+            }))
+            .then(() => new Promise(resolve => setTimeout(resolve, 20)))
+            .then(() => fixture.page.$eval("#app", e => e.innerText))
+            .then(text => expect(text).toBe("clicked"))
+    })
 })

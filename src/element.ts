@@ -299,8 +299,6 @@ export abstract class WeccoElement<T> extends HTMLElement {
             removeAllChildren(host)
         }
 
-        this.eventListeners.clear()
-
         const elementBody = this.renderCallback(this.data || ({} as T), this.renderContext)
         this.updateRequested = false
 
