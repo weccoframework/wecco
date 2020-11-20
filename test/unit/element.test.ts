@@ -17,7 +17,7 @@
  */
 
 import { expect } from "iko"
-import { define, component, WeccoElement, ComponentFactory } from "../../src/element"
+import { define, ComponentFactory } from "../../src/element"
 
 interface ComponentData {
     s: string
@@ -28,24 +28,6 @@ describe("element.ts", () => {
     let oldCreateElement: (tagName: string, options?: ElementCreationOptions) => HTMLElement
 
     beforeEach(() => {
-        const definedElements: { [key: string]: Function } = {}
-        window.customElements = {
-            define(name, ctor) {
-                definedElements[name] = ctor
-            },
-
-            get(name) {
-                return definedElements[name]
-            },
-
-            upgrade(root) {
-            },
-
-            whenDefined(name) {
-                return Promise.resolve()
-            }
-        }
-
         oldCreateElement = document.createElement
         document.createElement = (tagName: string, options?: ElementCreationOptions) => {
             const e = window.customElements.get(tagName)
@@ -57,16 +39,16 @@ describe("element.ts", () => {
 
             return new e()
         }
-
     })
-    afterEach(() => {
+
+    afterEach(() => {        
         document.body.innerHTML = ""
         document.createElement = oldCreateElement
     })
 
     describe("define", () => {
         let component: ComponentFactory<ComponentData>
-        beforeEach(() => {
+        before(() => {
             component = define("test-component", (data: ComponentData, notifyUpdate) => {
                 return `<p>${data.s}: ${data.n}</p>`
             })
