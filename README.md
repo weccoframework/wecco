@@ -68,7 +68,7 @@ The last line creates an instance of the component passing in an object that imp
 # License
 
 ```
-Copyright 2019 Alexander Metzner.
+Copyright (c) 2019 - 2020 The wecco authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
