@@ -1,200 +1,162 @@
 import * as wecco from "@wecco/core"
 
-/**
- * Defines the structure of data to be passed to a date picker instance.
- */
-export interface DatePickerData {
-    /** The value for the picker */
-    value?: Date
-
-    /** Callback handler to receive change events */
-    onChange?: (d: Date) => void
-
-    /** Start in editing mode? */
-    inEdit?: boolean
-
-    /** Formatter used to format a date for display. Defaults to `Date.toDateString()` */
-    formatter?: (d: Date) => string
-
-    /** Message to be issued when no date is selected. */
-    noDateSelectedMessage?: string
-}
-
-const DatePicker = wecco.define("wecco-data-picker", (data: DatePickerData, context: wecco.RenderContext) => {
-    data.formatter = data.formatter || ((d: Date) => d.toDateString())
-    data.noDateSelectedMessage = data.noDateSelectedMessage || "No date selected"
-
-    if (!data.inEdit) {
-        const selectDate = (e: Event) => {
-            data.inEdit = true
-            context.requestUpdate()
-        }
-
-        return wecco.html`<a href="#" @click=${selectDate}>${data.value !== null ? data.formatter.call(null, data.value) : data.noDateSelectedMessage}</a>`
-    }
-
-    const onChange = (e: Event) => {
-        Promise.resolve()
-            .then(() => {
-                data.inEdit = false
-                const value = (<HTMLInputElement>e.target).value
-                if (value) {
-                    const date = new Date(value)
-                    data.value = date
-                    if (data.onChange) {
-                        data.onChange(data.value)
-                    }
-                } else {
-                    data.value = null
-                }
-                return Promise.resolve()
-            })
-
-            .then(context.requestUpdate.bind(context))
-    }
-
-    let inputValue = ""
-    if (data.value) {
-        inputValue = data.value.toISOString().substr(0, 10)
-    }
-
-    return wecco.html`<input type="date" autofocus @change=${onChange} @blur=${onChange} value=${inputValue}>`
-})
-
 // -- Models
 
+class TodoList {
+    constructor (public title: String | null, public items: TodoItem[]) {}
+}
+
 class TodoItem {
-    constructor(public summary: string, public done: boolean = false, public dueDate: Date | null = null) { }
+    constructor(public summary: string, public complete: boolean = false, public dueDate: Date | null = null, public editing: boolean = false) { }
 }
 
-interface TodoItemData {
-    item: TodoItem
-    editable?: boolean
+// -- Messages
+
+interface Add {
+    command: "add",
 }
 
-interface TodoData {
-    title?: string
-    items: TodoItemData[]
+interface Update {
+    command: "update",
+    index: number,
+    field: keyof TodoItem,
+    value: any
 }
 
-// -- Event names
-
-enum TodoEvents {
-    Add = "add",
-    Modified = "mod",
-    Deleted = "del",
+interface MarkAsComplete {
+    command: "mark-as-complete",
+    index: number,
 }
+
+interface PickDueDate {
+    command: "pick-due-date",
+    index: number,
+}
+
+interface Delete {
+    command: "delete",
+    index: number,
+}
+
+type Message = Add | Update | Delete
 
 // -- Persistence
 
-class TodoItemStore {
+class Store {
     constructor(private key: string = "todos") { }
 
-    load(): TodoItem[] {
+    load(): TodoList {
         const jsonData = window.localStorage.getItem(this.key)
 
         if (!jsonData) {
-            return []
+            return new TodoList(null, [])
         }
 
         try {
             const data = JSON.parse(jsonData)
-            return data.map((d: any) => new TodoItem(d.s, d.d, d.u ? new Date(d.u) : null))
+            return new TodoList(data.title, data.items.map((i: any) => new TodoItem(i.summary, i.complete, i.dueDate ? new Date(i.dueDate) : null)))
         } catch (e) {
             window.localStorage.setItem(this.key, "")
-            return []
+            return new TodoList(null, [])
         }
     }
 
-    save(items: TodoItem[]) {
-        const data = items.map(i => {
-            return {
-                s: i.summary,
-                d: i.done,
-                u: i.dueDate ? i.dueDate.toISOString() : "",
-            }
-        })
+    save(list: TodoList) {
+        const data = {
+            title: list.title,
+            items: list.items.map(i => { return {
+                summary: i.summary,
+                complete: i.complete,
+                dueDate: i.dueDate?.toISOString() ?? null,
+            }}),
+        }
+                
         const jsonData = JSON.stringify(data)
         window.localStorage.setItem(this.key, jsonData)
     }
 }
 
-// -- Components
+// -- View
 
-const TodoItemView = wecco.define("todo-item", (data: TodoItemData, context) => {
-    const markAsDone = () => { data.item.done = true; context.emit(TodoEvents.Modified, data.item) }
-    const remove = () => { context.emit(TodoEvents.Deleted, data.item) }
-    const onChange = (e: Event) => {
-        data.item.summary = (<HTMLInputElement>e.target).value
-        context.emit(TodoEvents.Modified, data.item)
-    }
+function view(model: TodoList, context: wecco.AppContext<Message>) {
+    return wecco.html`
+        <h2>${model.title || "Todos"}</h2>
+        <div>
+            ${model.items.map((item, idx) => item_view(item, idx, context))}
+        </div>
+        
+        <div class="mt-2 text-right">
+            <button class="btn btn-primary" @click=${() => context.emit({ command: "add" })}><i class="material-icons">add</i></button>
+        </div>
+    `
+}
+
+function item_view(model: TodoItem, idx: number, context: wecco.AppContext<Message>) {
+    const onChange = (e: InputEvent) => context.emit({
+        command: "update", 
+        index: idx,
+        field: "summary",
+        value: (e.target as HTMLInputElement).value,
+    })
+    const markAsComplete = () => context.emit({
+        command: "update",
+        index: idx,
+        field: "complete",
+        value: true,
+    })
+    const remove = () => context.emit({
+        command: "delete",
+        index: idx,
+    })
 
     return wecco.html`
     <div class="card">
-        <div class="card-content">
-          ${data.editable ? wecco.html`<input type="text" @change=${onChange} autofocus placeholder="Summary">` : wecco.html`<p>${data.item.summary}</p>`}          
-        </div>
-        <div class="card-action">
-            ${ data.item.done ? "" : wecco.html`<a @click=${markAsDone}><i class="material-icons">check_circle</i></a>`}
-          ${DatePicker({
-        value: data.item.dueDate,
-        onChange: (d: Date) => {
-            data.item.dueDate = d
-            context.emit(TodoEvents.Modified, data.item)
-        },
-        noDateSelectedMessage: "Select due date"
-    })}
-            <a @click=${remove}><i class="material-icons">delete</i></a>
+        <div class="card-body">
+            ${model.editing 
+                ? wecco.html`<input type="text" class="form-control" @change=${onChange} autofocus placeholder="Summary">` 
+                : model.complete
+                    ? wecco.html`<h5 class="card-title complete">${model.summary}</h5>`
+                    : wecco.html`<h5 class="card-title">${model.summary}</h5>`
+            }          
+            ${model.complete ? "" : wecco.html`<a @click=${markAsComplete} class="btn btn-primary"><i class="material-icons">check_circle</i></a>`}
+            <date-picker value=${model.dueDate?.toISOString()} @date-selected=${(e: CustomEvent) => { context.emit({
+                command: "update",
+                index: idx,
+                field: "dueDate",
+                value: e.detail,
+            })}} message="Select due date"></date-picker>
+            <a @click=${remove} class="btn btn-danger"><i class="material-icons">delete</i></a>
         </div>
     </div>`
-})
-
-const TodoItemListView = wecco.define("todo-list", (data: TodoData, context) => {
-    return wecco.html`
-        <h3>${data.title || "Todos"}</h3>
-        <div>
-        ${data.items.map(i => TodoItemView(i))}
-        </div>
-        <div class="mt-2 text-right">
-            <button class="waves-effect waves-light btn" @click=${() => context.emit(TodoEvents.Add)}><i class="material-icons">add</i></button>
-        </div>
-    `
-})
-
-// -- Controller (=== App)
-
-class TodoApp implements wecco.Controller {
-    private store: TodoItemStore
-    private items: TodoItemData[]
-
-    constructor() {
-        this.store = new TodoItemStore("wecco.examples.todos")
-        this.items = this.store.load().map(i => { return { item: i, editable: false } })
-    }
-
-    handleEvent(event: string, payload: any, render: wecco.ControllerRenderCallback) {
-        switch (event) {
-            case TodoEvents.Add:
-                this.items.push({ item: new TodoItem(""), editable: true })
-                break
-
-            case TodoEvents.Modified:
-                this.items.find(i => i.item === payload).editable = false
-                break
-
-            case TodoEvents.Deleted:
-                const index = this.items.findIndex(i => i.item.summary === payload.summary)
-                this.items.splice(index, 1)
-                break
-        }
-
-        this.store.save(this.items.map(i => i.item))
-
-        render(TodoItemListView({
-            title: "My Todos",
-            items: this.items,
-        }))
-    }
 }
 
-wecco.controller("#todo-app", new TodoApp())
+const store = new Store("wecco.examples.todos")
+
+function update(model: TodoList, message: Message): TodoList {
+    switch (message.command) {
+        case "add":
+            model.items.push(new TodoItem("", false, null, true))
+            break
+        case "update":
+            const item = model.items[message.index]
+            item.editing = false;
+            (item as any)[message.field] = message.value            
+            break
+        case "delete":
+            model.items.splice(message.index, 1)
+            break
+    }
+
+    store.save(model)
+
+    return model
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    wecco.app(
+        () => store.load(),
+        update,
+        view,
+        "#todo-app",
+    )
+})

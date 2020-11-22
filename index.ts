@@ -16,8 +16,8 @@
  * limitations under the License.
  */
 
-export { define, component, WeccoElement, BindElementCallback, NotifyUpdateCallback, RenderCallback, ContentProducer, RenderContext } from "./src/element"
-export { ControllerEventHandler, ControllerRenderCallback, controller, ControllerEventInit, Controller, ControllerInstance } from "./src/controller"
+export { ElementSelector, resolve, removeAllChildren, updateElement, ElementUpdate, ElementUpdateFunction, ElementUpdater } from "./src/dom"
+export { define, component, WeccoElement, NotifyUpdateCallback, RenderCallback, RenderContext } from "./src/element"
 export { shadow, DoWithShadowCallback } from "./src/shadow"
 export { html } from "./src/html"
-export { ElementSelector, resolve, removeAllChildren } from "./src/dom"
+export { AppContext, Updater, ModelInitializer, View, app} from "./src/app"

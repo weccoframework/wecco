@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-import { ContentProducer } from "./element"
+import { ElementUpdater } from "./dom"
 
 /**
  * `html` is a string tag to be used with string templates. The tag generates
@@ -25,20 +25,21 @@ import { ContentProducer } from "./element"
  * @param strings the string parts of the template
  * @param args the arguments of the template
  */
-export function html(strings: TemplateStringsArray, ...args: any): ContentProducer {
-    const key = HtmlTemplateContentProducerCache.calculateCacheKey(strings)
-    if (HtmlTemplateContentProducerCache.instance.has(key)) {
-        return HtmlTemplateContentProducerCache.instance.get(key).clone(args)
+export function html(strings: TemplateStringsArray, ...args: any): ElementUpdater {
+    const key = HtmlTemplateCache.calculateCacheKey(strings)
+
+    if (HtmlTemplateCache.instance.has(key)) {
+        return HtmlTemplateCache.instance.get(key).clone(args)
     }
 
-    const result = HtmlTemplateContentProducer.fromTemplateString(strings, args)
-    HtmlTemplateContentProducerCache.instance.set(key, result)
-
+    const result = HtmlTemplate.fromTemplateString(strings, args)
+    HtmlTemplateCache.instance.set(key, result)
+    
     return result
 }
 
-class HtmlTemplateContentProducerCache {
-    static readonly instance = new HtmlTemplateContentProducerCache()
+class HtmlTemplateCache {
+    static readonly instance = new HtmlTemplateCache()
 
     static calculateCacheKey(strings: TemplateStringsArray): string {
         let result = ""
@@ -53,17 +54,17 @@ class HtmlTemplateContentProducerCache {
         return result
     }
 
-    private readonly entries = new Map<string, HtmlTemplateContentProducer>()
+    private readonly entries = new Map<string, HtmlTemplate>()
 
     has(key: string): boolean {
         return this.entries.has(key)
     }
 
-    get(key: string): HtmlTemplateContentProducer {
+    get(key: string): HtmlTemplate {
         return this.entries.get(key)
     }
 
-    set(key: string, value: HtmlTemplateContentProducer) {
+    set(key: string, value: HtmlTemplate) {
         this.entries.set(key, value)
     }
 }
@@ -92,7 +93,7 @@ class CommentNodeBinding implements Binding {
         dataArray.forEach(d => {
             if (d instanceof Element) {
                 insertPoint.insertBefore(d, comment)
-            } else if (d instanceof HtmlTemplateContentProducer) {
+            } else if (d instanceof HtmlTemplate) {
                 d.createContentElements().forEach(n => insertPoint.insertBefore(n, comment))
             } else {
                 insertPoint.insertBefore(document.createTextNode(d), comment)
@@ -143,25 +144,35 @@ class AttributeBinding implements Binding {
             }
             element.removeAttribute(this.attributeName)
             const eventName = this.attributeName.substr(1)
-            if (eventName !== "mount") {
-                element.addEventListener(eventName, data[this.dataIndex])
-            } else {
+            if (eventName === "mount") {
+                // The "mount" event is special to HtmlTemplates. It allows a listener to 
+                // work on the actual DOM element, once it has been mounted. Thus, we 
+                // bind the supplied listener to receive the element.
                 element.addEventListener(eventName, data[this.dataIndex].bind(null, element))
+            } else {                
+                element.addEventListener(eventName, data[this.dataIndex])
             }
-        } else if (this.attributeName.startsWith("?")) {
+            return
+        }
+
+        if (this.attributeName.startsWith("?")) {
             element.removeAttribute(this.attributeName)
             if (data[this.dataIndex]) {
                 const name = this.attributeName.substr(1)
                 element.setAttribute(name, name)
             }
 
-        } else if (this.attributeName === "value" && element instanceof HTMLTextAreaElement) {
-            let value = element.getAttribute(this.attributeName)
-            value = value.replace(`{{wecco-html-${this.dataIndex}}}`, data[this.dataIndex])
+            return
+        }
+
+        let valueFromData = data[this.dataIndex] ?? ""
+
+        let value = element.getAttribute(this.attributeName)
+        value = value.replace(`{{wecco-html-${this.dataIndex}}}`, valueFromData)
+
+        if (this.attributeName === "value" && element instanceof HTMLTextAreaElement) {                        
             element.innerText = value
         } else {
-            let value = element.getAttribute(this.attributeName)
-            value = value.replace(`{{wecco-html-${this.dataIndex}}}`, data[this.dataIndex])
             element.setAttribute(this.attributeName, value)
         }
     }
@@ -171,19 +182,19 @@ const PlaceholderAttributeRegex = /[a-z0-9-_@]+\s*=\s*$/i;
 const PlaceholderSingleQuotedAttributeRegex = /[a-z0-9-_@]+\s*=\s*'[^']*$/i;
 const PlaceholderDoubleQuotedAttributeRegex = /[a-z0-9-_@]+\s*=\s*"[^"]*$/i;
 
-class HtmlTemplateContentProducer implements ContentProducer {
+class HtmlTemplate implements ElementUpdater {
     private readonly templateString: string
     private readonly data: any[]
 
     private readonly template: HTMLTemplateElement
     private readonly bindings: Binding[] = []
 
-    static fromTemplateString(strings: TemplateStringsArray, args: any[]): HtmlTemplateContentProducer {
-        const templateString = HtmlTemplateContentProducer.generateHtml(strings)
+    static fromTemplateString(strings: TemplateStringsArray, args: any[]): HtmlTemplate {
+        const templateString = HtmlTemplate.generateHtml(strings)
 
         const template = document.createElement("template")
         template.innerHTML = templateString
-        return new HtmlTemplateContentProducer(templateString, args, template)
+        return new HtmlTemplate(templateString, args, template)
     }
 
     private constructor(templateString: string, data: any[], template: HTMLTemplateElement) {
@@ -193,8 +204,8 @@ class HtmlTemplateContentProducer implements ContentProducer {
         this.determineBindings(this.template.content)
     }
 
-    clone(args: any): HtmlTemplateContentProducer {
-        return new HtmlTemplateContentProducer(this.templateString, args, this.template)
+    clone(args: any): HtmlTemplate {
+        return new HtmlTemplate(this.templateString, args, this.template)
     }
 
     createContentElements(): Node[] {
@@ -203,7 +214,7 @@ class HtmlTemplateContentProducer implements ContentProducer {
         return Array.prototype.slice.call(content.childNodes)
     }
 
-    render(host: HTMLElement) {
+    updateElement(host: Element) {
         this.createContentElements().forEach(e => {
             host.appendChild(e)
             this.notifyMounted(e)
@@ -232,7 +243,7 @@ class HtmlTemplateContentProducer implements ContentProducer {
                 } else if (node.parentElement.hasAttribute(WeccoHtmlIdDataAttributeName)) {
                     id = node.parentElement.getAttribute(WeccoHtmlIdDataAttributeName)
                 } else {
-                    id = HtmlTemplateContentProducer.generateId()
+                    id = HtmlTemplate.generateId()
                     node.parentElement.setAttribute(WeccoHtmlIdDataAttributeName, id)
                 }
 
@@ -255,7 +266,7 @@ class HtmlTemplateContentProducer implements ContentProducer {
                     if (node.hasAttribute(WeccoHtmlIdDataAttributeName)) {
                         id = node.getAttribute(WeccoHtmlIdDataAttributeName)
                     } else {
-                        id = HtmlTemplateContentProducer.generateId()
+                        id = HtmlTemplate.generateId()
                         node.setAttribute(WeccoHtmlIdDataAttributeName, id)
                     }
 

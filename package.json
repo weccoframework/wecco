@@ -1,8 +1,13 @@
 {
     "name": "@wecco/core",
-    "version": "0.11.0",
+    "version": "0.12.0",
     "description": "A simple, minimalistic web framework based on web components and HTML templates",
-    "license": "Apache License Version 2.0",
+    "license": "Apache-2.0",
+    "repository": {
+        "type": "git",
+        "url": "https://halimath@bitbucket.org/wecco/core.git"
+    },
+    "homepage": "https://wecco.bitbucket.io/",
     "devDependencies": {
         "typescript": "^4.1.2",
         "mocha": "^8.2.1",
