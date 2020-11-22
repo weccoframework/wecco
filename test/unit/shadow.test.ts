@@ -18,7 +18,7 @@
 
 import { expect } from "iko"
 import { shadow } from "../../src/shadow"
-import { ContentProducer } from "../../src/element";
+import { ElementUpdater } from "../../src/dom";
 
 describe("shadow.ts", async () => {
     afterEach(() => {
@@ -48,7 +48,7 @@ describe("shadow.ts", async () => {
         it("should create shadow and invoke callback", () => {
             const el = document.createElement("div")
             const child = document.createElement("div")
-            shadow(s => s.appendChild(child))(el)
+            shadow((s: Element) => s.appendChild(child))(el)
 
             expect(el.shadowRoot.childNodes[0]).toBe(child)
         })
@@ -57,8 +57,8 @@ describe("shadow.ts", async () => {
             const el = document.createElement("div")
             const child = document.createElement("div")
 
-            shadow(new (class implements ContentProducer {
-                render(host: Node) {
+            shadow(new (class implements ElementUpdater {
+                updateElement(host: Element) {
                     host.appendChild(child)
                 }
             }))(el)

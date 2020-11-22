@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-import { BindElementCallback, ContentProducer } from "./element"
+import { ElementUpdateFunction, ElementUpdate, updateElement } from "./dom"
 
 /**
  * `DoWithShadowCallback` can be used to automatically create a `ShadowRoot` for an element.
@@ -27,15 +27,13 @@ export type DoWithShadowCallback = (shadow: ShadowRoot) => void
  * Used to create a [`ShadowRoot`](https://developer.mozilla.org/en-US/docs/Web/API/ShadowRoot) and add content to it. 
  * @param content the callback to add content to the shadow root
  */
-export function shadow(content: Element | DoWithShadowCallback | ContentProducer): BindElementCallback {
+export function shadow(content: DoWithShadowCallback | ElementUpdate): ElementUpdateFunction {
     return (host: Element) => {
         const shadow = host.shadowRoot || host.attachShadow({ mode: "open" })
-        if (content instanceof Element) {
-            shadow.appendChild(content)
-        } else if (typeof content === "function") {
+        if (typeof content === "function") {
             content.call(null, shadow)
         } else {
-            content.render(shadow.getRootNode())
+            updateElement(shadow.getRootNode() as Element, content)
         }
     }
 }

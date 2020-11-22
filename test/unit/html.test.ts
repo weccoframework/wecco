@@ -26,7 +26,7 @@ describe("html.ts", async () => {
 
     describe("html", () => {
         it("should create html w/o placeholder", () => {
-            (html`<p>Hello, world</p>`).render(document.body)
+            (html`<p>Hello, world</p>`).updateElement(document.body)
 
             expect(document.body.innerHTML).toBe("<p>Hello, world</p>")
         })
@@ -34,7 +34,7 @@ describe("html.ts", async () => {
         it("should create html w/ placeholder", () => {
             const gretee = "world";
 
-            (html`<p>Hello, ${gretee}</p>`).render(document.body)
+            (html`<p>Hello, ${gretee}</p>`).updateElement(document.body)
 
             expect(document.body.innerHTML).toMatch(/^<p data-wecco-html-id="[a-z0-9]{6}">Hello, world<\/p>/)
         })
@@ -42,7 +42,7 @@ describe("html.ts", async () => {
         it("should create html w/ toplevel placeholder", () => {
             const gretee = "world";
 
-            (html`<p>Hello</p>${gretee}`).render(document.body)
+            (html`<p>Hello</p>${gretee}`).updateElement(document.body)
 
             expect(document.body.innerHTML).toMatch(/^<p>Hello<\/p>world/)
         })
@@ -51,7 +51,7 @@ describe("html.ts", async () => {
             const message = "Hello, ";
             const gretee = "world";
 
-            (html`<p>${message}${gretee}</p>`).render(document.body)
+            (html`<p>${message}${gretee}</p>`).updateElement(document.body)
 
             expect(document.body.innerHTML).toMatch(/^<p data-wecco-html-id="[a-z0-9]{6}">Hello, world<\/p>/)
         })
@@ -59,24 +59,24 @@ describe("html.ts", async () => {
         it("should create html w/ attribute placeholder", () => {
             const classes = "hero small"
 
-            const producer = (html`<p class=${classes}>Hello, world</p>`)
-            producer.render(document.body)
+            const template = (html`<p class=${classes}>Hello, world</p>`)
+            template.updateElement(document.body)
 
             expect(document.body.innerHTML).toMatch(/^<p class="hero small" data-wecco-html-id="[a-z0-9]{6}">Hello, world<\/p>$/)
         })
 
         it("should create html w/ boolean attribute placeholder set to false", () => {
             const disabled = false
-            const producer = (html`<a ?disabled=${disabled}>Hello, world</a>`)
-            producer.render(document.body)
+            const template = (html`<a ?disabled=${disabled}>Hello, world</a>`)
+            template.updateElement(document.body)
 
             expect(document.body.innerHTML).toMatch(/^<a data-wecco-html-id="[a-z0-9]{6}">Hello, world<\/a>$/)
         })
 
         it("should create html w/ boolean attribute placeholder set to true", () => {
             const disabled = true
-            const producer = (html`<a ?disabled=${disabled}>Hello, world</a>`)
-            producer.render(document.body)
+            const template = (html`<a ?disabled=${disabled}>Hello, world</a>`)
+            template.updateElement(document.body)
 
             expect(document.body.innerHTML).toMatch(/^<a data-wecco-html-id="[a-z0-9]{6}" disabled="disabled">Hello, world<\/a>$/)
         })
@@ -85,8 +85,8 @@ describe("html.ts", async () => {
             let clicked = false
             const callback = () => { clicked = true }
 
-            const producer = (html`<a @click=${callback}>Hello, world</a>`)
-            producer.render(document.body)
+            const template = (html`<a @click=${callback}>Hello, world</a>`)
+            template.updateElement(document.body)
 
             expect(document.body.innerHTML).toMatch(/^<a data-wecco-html-id="[a-z0-9]{6}">Hello, world<\/a>$/)
 

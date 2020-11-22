@@ -23,7 +23,7 @@ describe("events", () => {
     it("should emit custom events", () => {
         return fixture.page.evaluate(() => {
             window._receivedEvent = null
-            document.addEventListener("weccoEvent", e => {
+            document.addEventListener("test", e => {
                 window._receivedEvent = e.detail
             })
             wecco.define("test-component", (data, context) => {
@@ -40,7 +40,7 @@ describe("events", () => {
         })
             .then(() => new Promise(resolve => setTimeout(resolve, 10)))
             .then(() => fixture.page.evaluate(() => window._receivedEvent))
-            .then(detail => expect(detail.name).toBe("test") && expect(detail.payload).toBe("foobar"))
+            .then(detail => expect(detail).toBe("foobar"))
     })
 
     it("should emit and subscribe for custom events", () => {
@@ -81,7 +81,7 @@ describe("events", () => {
             document.querySelector("#app").innerHTML = "<my-button label=\"test\"></my-button>"
         })
             .then(() => fixture.page.evaluate(() => {
-                document.querySelector("my-button").addCustomEventListener("click", () => {
+                document.querySelector("my-button").addEventListener("click", () => {
                     document.querySelector("#app").innerHTML = "clicked"
                 })
             }))

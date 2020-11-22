@@ -17,6 +17,35 @@
  */
 
 /**
+ * `ElementUpdateFunction` defines a type for functions that updates an Elements's content.
+ */
+export interface ElementUpdateFunction {
+    (host: Element): void
+}
+
+export interface ElementUpdater {
+    updateElement(el: Element): void
+}
+
+export type ElementUpdate = string | Element | ElementUpdateFunction | ElementUpdater
+
+export function updateElement (element: Element, request: ElementUpdate): void {
+    if (typeof(request) === "string") {
+        element.innerHTML = request
+    } else if (request instanceof Element) {
+        element.appendChild(request)
+    } else if (isElementUpdater(request)) {
+        request.updateElement(element)
+    } else {
+        request(element)
+    }
+}
+
+function isElementUpdater (request: ElementUpdate): request is ElementUpdater {
+    return "updateElement" in (request as any)
+}
+
+/**
  * Selector to resolve a Node inside the DOM.
  */
 export type ElementSelector = string | Element

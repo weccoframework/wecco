@@ -16,40 +16,12 @@
  * limitations under the License.
  */
 
-import { ElementSelector, resolve, removeAllChildren } from "./dom"
-import { emit, once } from "cluster";
-
-/**
- * `BindElementCallback` defines a type used by functions that apply elements to another element.
- */
-export type BindElementCallback = (host: Node) => void
-
-/**
- * `ContentProducer` defines types that produce an element's content on request.
- */
-export interface ContentProducer {
-    /**
-     * Called to create the element's content.
-     * @param host the element to create content for
-     */
-    render(host: Node): void
-}
+import { ElementSelector, resolve, removeAllChildren, ElementUpdate, updateElement } from "./dom"
 
 /**
  * `NotifyUpdateCallback` defines the type for functions that are called to notify of an element update.
  */
 export type NotifyUpdateCallback = () => void
-
-/**
- * `RenderResult` defines the type of data returned from a `RenderCallback`.
- * 
- * It is one of the following
- * * `string` - any string that is used to set an element's `innerHtml`
- * * `Node` - a DOM Node to be appended as a child
- * * `BindElementCallback` - which is used to dynamically provide a `Node`'s content
- * * `ContentProducer` - an instance of a class implementing the `ContentProducer` interface
- */
-export type RenderResult = string | Node | BindElementCallback | ContentProducer
 
 /**
  * Type for callback functions provided to `RenderContext.once`.
@@ -89,26 +61,13 @@ export interface RenderContext {
 /**
  * `RenderCallback` defins the type for functions that are passed to `define` in order to produce an element's content
  */
-export type RenderCallback<T> = (data: T, context: RenderContext) => RenderResult
+export type RenderCallback<T> = (data: T, context: RenderContext) => ElementUpdate
 
 /**
  * Type definition for a factory function that gets returned from `define` as a convenience function
  * to create new instances of the defined component.
  */
 export type ComponentFactory<T> = (data?: T, host?: string | Element) => WeccoElement<T>
-
-/**
- * Name of the `CustomEvent` emitted when using `WeccoElement`'s built-in eventing mechanism.
- */
-export const WeccoCustomEventName = "weccoEvent"
-
-/**
- * Interface describing the type of `details` objects sent with custom events.
- */
-export interface WeccoCustomEventDetails {
-    name: string,
-    payload?: any,
-}
 
 /**
  * `WeccoElement` defines the base class for all custom elements created by wecco.
@@ -126,9 +85,6 @@ export abstract class WeccoElement<T> extends HTMLElement {
 
     /** Flag that marks whether this component is connected to the DOM or not. */
     private connected = false
-
-    /** Listeners for events */
-    private eventListeners = new Map<string, Array<(payload?: any) => void>>()
 
     /** The render context instance to use */
     private renderContext: RenderContext = new WeccoElementRenderContext(this)
@@ -183,25 +139,13 @@ export abstract class WeccoElement<T> extends HTMLElement {
     }
 
     emit = (eventName: string, payload?: any) => {
-        const event = new CustomEvent(WeccoCustomEventName, {
-            detail: {
-                name: eventName,
-                payload: payload,
-            },
+        const event = new CustomEvent(eventName, {
+            detail: payload,
             bubbles: true,
             cancelable: true,
             composed: true, // Enables bubbling beyond shadow root
         })
         this.dispatchEvent(event)
-        return this
-    }
-
-    addCustomEventListener(event: string, listener: (payload?: any) => void): WeccoElement<T> {
-        if (!this.eventListeners.has(event)) {
-            this.eventListeners.set(event, [])
-        }
-
-        this.eventListeners.get(event).push(listener)
         return this
     }
 
@@ -215,8 +159,6 @@ export abstract class WeccoElement<T> extends HTMLElement {
             }
         })
 
-        super.addEventListener(WeccoCustomEventName, this.handleWeccoEvent)
-
         this.connected = true
 
         this.updateDom()
@@ -227,7 +169,6 @@ export abstract class WeccoElement<T> extends HTMLElement {
      */
     disconnectedCallback() {
         this.childNodes.forEach(this.removeChild.bind(this))
-        this.removeEventListener(WeccoCustomEventName, this.handleWeccoEvent)
         this.connected = false
     }
 
@@ -236,7 +177,7 @@ export abstract class WeccoElement<T> extends HTMLElement {
      */
     attributeChangedCallback(name: string, oldValue: any, newValue: any) {
         const object = {} as any
-        object[name] = newValue
+        object[modelKeyForAttributeName(name)] = newValue
         this.setData(object as Partial<T>)
     }
 
@@ -266,24 +207,11 @@ export abstract class WeccoElement<T> extends HTMLElement {
                 const observed = (this as any).observedAttributes as Array<string>;
                 Object.keys(this.data).forEach(k => {
                     if (observed.indexOf(k) > -1) {
-                        this.setAttribute(k, (this.data as any)[k])
+                        this.setAttribute(attributeNameForModelKey(k), (this.data as any)[k])
                     }
                 })
                 this.updateDom(true)
             })
-    }
-
-    private handleWeccoEvent = (e: CustomEvent) => {
-        const { name, payload } = e.detail
-
-        if (!this.eventListeners.has(name)) {
-            return
-        }
-
-        e.preventDefault()
-        e.stopPropagation()
-
-        this.eventListeners.get(name).forEach(listener => listener(payload))
     }
 
     private updateDom(removePreviousDom: boolean = false) {
@@ -299,22 +227,10 @@ export abstract class WeccoElement<T> extends HTMLElement {
             removeAllChildren(host)
         }
 
-        const elementBody = this.renderCallback(this.data || ({} as T), this.renderContext)
+        const elementUpdate = this.renderCallback(this.data || ({} as T), this.renderContext)
         this.updateRequested = false
 
-        if (elementBody) {
-            if (typeof elementBody === "string") {
-                this.innerHTML = elementBody
-            } else if (elementBody instanceof Node) {
-                this.appendChild(elementBody as Node)
-            } else if (isElementContentProducer(elementBody)) {
-                elementBody.render(this)
-            } else if (typeof elementBody === "function") {
-                (elementBody as BindElementCallback).call(null, this)
-            } else {
-                console.error("Got unexpected result from render callback: ", elementBody)
-            }
-        }
+        updateElement(this, elementUpdate)
     }
 }
 
@@ -335,7 +251,7 @@ class WeccoElementRenderContext<T> implements RenderContext {
     }
 
     addEventListener(event: string, listener: (payload?: any) => void): RenderContext {
-        this.component.addCustomEventListener(event, listener)
+        this.component.addEventListener(event, listener)
         return this
     }
 
@@ -359,6 +275,7 @@ export function define<T>(name: string, renderCallback: RenderCallback<T>, obser
  */
 export function define<T>(name: string, renderCallback: RenderCallback<T>, ...observedAttributes: Array<Array<keyof T> | keyof T>): ComponentFactory<T> {
     const observedAttributesValue: Array<keyof T> = observedAttributes.map(a => Array.isArray(a) ? a : [a]).reduce((a, v) => a.concat(v), [])
+    const observedAttributeNames = observedAttributesValue.map(v => attributeNameForModelKey(v as string))
 
     window.customElements.define(name, class extends WeccoElement<T> {
         protected renderCallback = renderCallback
@@ -368,10 +285,60 @@ export function define<T>(name: string, renderCallback: RenderCallback<T>, ...ob
          * Getter used to retrieve the list of attribute names to watch for changes.
          */
         static get observedAttributes() {
-            return observedAttributesValue
+            return observedAttributeNames
         }
     })
     return component.bind(null, name)
+}
+
+/**
+ * Converts the name of a model attribute to a corresponding HTML attribute name.
+ * This is basically a conversion from camel case to dash case.
+ * @param modelKey the model key name
+ * @returns the corresponding attribute name
+ */
+function attributeNameForModelKey (modelKey: string): string {
+    let result = ""
+    let wasUpper = false
+
+    for (let c of modelKey) {
+        if (c.toUpperCase() === c) {
+            if (wasUpper) {
+                result += "-"                
+            }
+            result += c.toLowerCase()
+            wasUpper = true
+        } else {
+            result += c
+            wasUpper = false
+        }
+    }
+
+    return result
+}
+
+/**
+ * Converts the name of a HTML attribute to a corresponding model attribute.
+ * This is basically a conversion from dash case to camel case.
+ * @param attributeName the attribute name
+ * @returns the corresponding model key name
+ */
+function modelKeyForAttributeName (attributeName: string): string {
+    let result = ""
+    let wasDash = false
+
+    for (let c of attributeName) {
+        if (c === "-") {
+            wasDash = true
+        } else if (wasDash) {
+            result += c.toUpperCase()
+            wasDash = false
+        } else {
+            result += c
+        }
+    }
+
+    return result
 }
 
 /**
@@ -416,12 +383,4 @@ export function component<T>(componentName: string, data?: T, host?: string | El
     }
 
     return el
-}
-
-/**
- * Type Guard to tell wether a rendering result is a `ContentProducer`.
- * @param c the rendering result
- */
-function isElementContentProducer(c: RenderResult): c is ContentProducer {
-    return typeof c === "object" && typeof (<any>c)["render"] === "function"
 }
