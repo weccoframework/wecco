@@ -1,5 +1,29 @@
 # Changelog
 
+# Version 0.13.0
+
+* `update` callback running as part of an app receive a `context` parameter to emit other messages
+
+# Version 0.12.0
+
+* Removed `controller` package in exchange for new `app` package
+
+# Version 0.11.0
+
+* Upgraded all dependencies
+
+# Version 0.10.1
+
+* Fixed event handler management on DOM updates
+
+# Version 0.10.0
+
+* Added support for invocation chaining on several objects
+
+# Version 0.9.1
+
+* Fixed `@mount` with nested elements
+
 # Version 0.9.0
 
 * `@mount` event (see https://bitbucket.org/wecco/core/issues/1/mount-special-event)
