@@ -29,7 +29,7 @@ export type ModelInitializer<M> = () => M
  * The function may produce a new model or modify the given model in place.
  * This type is generic on the model's and message's type.
  */
-export type Updater<MODEL, MESSAGE> = (model: MODEL, message: MESSAGE) => MODEL
+export type Updater<MODEL, MESSAGE> = (model: MODEL, message: MESSAGE, context: AppContext<MESSAGE>) => MODEL
 
 /**
  * Interface for a context object which can be used to control an app by sending messages.
@@ -53,13 +53,21 @@ export function app<MODEL, MESSAGE>(modelInitialier: ModelInitializer<MODEL>, up
 }
 
 class AppContextImpl<MODEL, MESSAGE> implements AppContext<MESSAGE> {
+    private renderUpdateTimeout: number | null = null
+
     constructor (private model: MODEL, private updater: Updater<MODEL, MESSAGE>, private view: View<MODEL, MESSAGE>, private mointPoint: Element) {
         updateElement(this.mointPoint, this.view(this.model, this))
     }
 
-    emit(message: MESSAGE) {   
-        this.model = this.updater(this.model, message)
-        removeAllChildren(this.mointPoint)
-        updateElement(this.mointPoint, this.view(this.model, this))
+    emit(message: MESSAGE) {
+        this.model = this.updater(this.model, message, this)
+
+        if (this.renderUpdateTimeout === null) {
+            this.renderUpdateTimeout = window.setTimeout(() => {
+                this.renderUpdateTimeout = null
+                removeAllChildren(this.mointPoint)
+                updateElement(this.mointPoint, this.view(this.model, this))        
+            }, 5)
+        }
     }
 }
