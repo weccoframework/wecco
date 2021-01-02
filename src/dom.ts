@@ -27,9 +27,7 @@ export interface ElementUpdater {
     updateElement(el: Element): void
 }
 
-export type PlainElementUpdate = string | Element | ElementUpdateFunction | ElementUpdater
-
-export type ElementUpdate = PlainElementUpdate | Array<PlainElementUpdate>
+export type ElementUpdate = string | Element | ElementUpdateFunction | ElementUpdater | Array<ElementUpdate>
 
 export function updateElement (element: Element, request: ElementUpdate): void {
     if (Array.isArray(request)) {
