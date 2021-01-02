@@ -1,5 +1,9 @@
 # Changelog
 
+# Version 0.14.0
+
+* `ElementUpdate` can be an array of update requests which will be applied in order
+
 # Version 0.13.0
 
 * `update` callback running as part of an app receive a `context` parameter to emit other messages

@@ -27,11 +27,17 @@ export interface ElementUpdater {
     updateElement(el: Element): void
 }
 
-export type ElementUpdate = string | Element | ElementUpdateFunction | ElementUpdater
+export type PlainElementUpdate = string | Element | ElementUpdateFunction | ElementUpdater
+
+export type ElementUpdate = PlainElementUpdate | Array<PlainElementUpdate>
 
 export function updateElement (element: Element, request: ElementUpdate): void {
-    if (typeof(request) === "string") {
-        element.innerHTML = request
+    if (Array.isArray(request)) {
+        request.forEach(updateElement.bind(undefined, element))
+    } else if (typeof(request) === "string") {
+        const dummy = document.createElement("div")
+        dummy.innerHTML = request
+        dummy.childNodes.forEach(n => element.appendChild(dummy.removeChild(n)))
     } else if (request instanceof Element) {
         element.appendChild(request)
     } else if (isElementUpdater(request)) {
