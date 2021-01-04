@@ -42,7 +42,7 @@ describe("render", () => {
         await fixture.page.evaluate(() => wecco.define("test-component", (data) => [wecco.html`<p>${data.m}</p>`, `<p>hello, world again</p>`])({ m: "hello, world" }).mount("#app"))
         let text = await fixture.page.$eval("#app p:nth-child(1)", e => e.innerText)
         expect(text).toBe("hello, world")
-        
+
         text = await fixture.page.$eval("#app p:nth-child(2)", e => e.innerText)
         expect(text).toBe("hello, world again")
     })
@@ -136,7 +136,7 @@ describe("render", () => {
 
                 return wecco.html`
                 <p>You clicked me ${data.count} times.</p>
-                <my-button label="Increment counter"/>
+                <my-button label="Increment counter" />
             `
             })
 
@@ -178,5 +178,23 @@ describe("render", () => {
         })
         const text = await fixture.page.$eval("#app div span", e => e.innerText)
         expect(text).toBe("foo")
+    })
+
+    it("should invoke @mount only once per mounting cycle", async () => {
+        await fixture.page.evaluate(() => {
+            window.mountCounter = 0;
+        });
+
+        await fixture.page.evaluate(() => {
+            const comp = wecco.define("test-component", () => {
+                const onMount = () => {
+                    window.mountCounter++;
+                };
+                return wecco.html`<h1 @mount=${onMount}>test-component</h1>`;
+            });
+            (wecco.html`${comp()}`).updateElement(document.querySelector("#app"));
+        })
+        const count = await fixture.page.evaluate(() => window.mountCounter)
+        expect(count).toBe(1)
     })
 })
