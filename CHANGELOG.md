@@ -1,5 +1,13 @@
 # Changelog
 
+# Version 0.14.2
+
+* fix redundant emit of `mounted` event when embedding one `HtmlTemplate`s inside another one
+
+# Version 0.14.1
+
+* fix type definition of how `ElementUpdate` handles arrays
+
 # Version 0.14.0
 
 * `ElementUpdate` can be an array of update requests which will be applied in order

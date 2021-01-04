@@ -17,36 +17,74 @@
  */
 
 /**
- * `ElementUpdateFunction` defines a type for functions that updates an Elements's content.
+ * `UpdateTarget` defines the type of a target of an update operation.
+ * It may either be a regular HTML `Element` or a `DocumentFragment` which
+ * is used as the `content` node for a HTML `template`.
+ */
+export type UpdateTarget = Element | DocumentFragment
+
+/**
+ * `ElementUpdateFunction` defines a type for callable objects that updates a target's content.
  */
 export interface ElementUpdateFunction {
-    (host: Element): void
+    (host: UpdateTarget, insertBefore?: Node): void
 }
 
+/** 
+ * `ElementUpdater` defines an interface for complex objects (those that carry methods) that
+ * perform an update of a given target.
+ */
 export interface ElementUpdater {
-    updateElement(el: Element): void
+    /**
+     * `updateElement` updates the content of the given target at the given `insertPoint`.
+     * @param el the target to update
+     * @param insertBefore the insert point. Should be used as the second parameter to `Node.insertBefore`. Optional; 
+     * if not present, content should be appended.
+     */
+    updateElement(el: UpdateTarget, insertBefore?: Node): void
 }
 
+/**
+ * `ElementUpdate` defines the possible types for update requests.
+ * - `string`s are used to define `innerHTML`
+ * - `Element`s should be inserted/appended
+ * - `ElementUpdateFunction` or `ElementUpdater` are applied
+ * - arrays of the afore mentioned are applied in sequence
+ */
 export type ElementUpdate = string | Element | ElementUpdateFunction | ElementUpdater | Array<ElementUpdate>
 
-export function updateElement (element: Element, request: ElementUpdate): void {
+/**
+ * `isElementUpdate` is a type guard that checks whether the given argument is an `ElementUpdate`. 
+ * @param arg the argument to check
+ */
+export function isElementUpdate(arg: any): arg is ElementUpdate {
+    return (typeof arg === "string") || (typeof arg === "function") || Array.isArray(arg) || (arg instanceof Element) || isElementUpdater(arg)
+}
+
+/**
+ * `updateElement` applies the given update request to the given target.
+ * @param target the target to update
+ * @param request the request
+ * @param insertBefore the insertion point
+ */
+export function updateElement(target: UpdateTarget, request: ElementUpdate, insertBefore?: Node): void {
     if (Array.isArray(request)) {
-        request.forEach(updateElement.bind(undefined, element))
-    } else if (typeof(request) === "string") {
+        request.forEach(r => updateElement(target, r, insertBefore))
+    } else if (typeof (request) === "string") {
         const dummy = document.createElement("div")
         dummy.innerHTML = request
-        dummy.childNodes.forEach(n => element.appendChild(dummy.removeChild(n)))
+        dummy.childNodes.forEach(n => target.insertBefore(dummy.removeChild(n), insertBefore))
     } else if (request instanceof Element) {
-        element.appendChild(request)
+        target.insertBefore(request, insertBefore)
     } else if (isElementUpdater(request)) {
-        request.updateElement(element)
+        request.updateElement(target, insertBefore)
     } else {
-        request(element)
+        request(target, insertBefore)
     }
 }
 
-function isElementUpdater (request: ElementUpdate): request is ElementUpdater {
-    return "updateElement" in (request as any)
+function isElementUpdater(request: ElementUpdate): request is ElementUpdater {
+    return (typeof request === "object") && ("updateElement" in request)
 }
 
 /**

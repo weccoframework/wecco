@@ -47,10 +47,13 @@ describe("app", () => {
 
             wecco.app(() => new Model(0), update, view, "#app")
         })
+        
         await fixture.page.evaluate(() => {
             document.querySelector("button").dispatchEvent(new MouseEvent("click"))
         })
-        await sleep(100)        
+        
+        await sleep(100)
+        
         const text = await fixture.page.$eval("#app button", e => e.innerText)
         expect(text).toBe("You clicked me 1 times")
     })
