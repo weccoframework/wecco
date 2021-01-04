@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-import { ElementUpdater } from "./dom"
+import { ElementUpdater, isElementUpdate, updateElement, UpdateTarget } from "./dom"
 
 /**
  * `html` is a string tag to be used with string templates. The tag generates
@@ -91,14 +91,13 @@ class CommentNodeBinding implements Binding {
         }
 
         dataArray.forEach(d => {
-            if (d instanceof Element) {
-                insertPoint.insertBefore(d, comment)
-            } else if (d instanceof HtmlTemplate) {
-                d.createContentElements().forEach(n => insertPoint.insertBefore(n, comment))
+            if (isElementUpdate(d)) {
+                updateElement(insertPoint, d, comment)
             } else {
                 insertPoint.insertBefore(document.createTextNode(d), comment)
             }
         })
+
         insertPoint.removeChild(comment)
     }
 
@@ -214,18 +213,32 @@ class HtmlTemplate implements ElementUpdater {
         return Array.prototype.slice.call(content.childNodes)
     }
 
-    updateElement(host: Element) {
+    updateElement(host: UpdateTarget, insertBefore?: Node) {
         this.createContentElements().forEach(e => {
-            host.appendChild(e)
-            this.notifyMounted(e)
+            host.insertBefore(e, insertBefore)
+            if (e.isConnected) {
+                this.notifyMounted(e)
+            }    
         })
     }
 
     private notifyMounted(e: Node) {
-        e.childNodes.forEach(this.notifyMounted.bind(this))
         e.dispatchEvent(new CustomEvent("mount", {
             bubbles: false,
         }))
+
+        if (e.nodeName.indexOf("-") > 0) {
+            // Element is a custom element. Stop visiting it's children.
+            return
+        }
+
+        e.childNodes.forEach(n => {
+            if (!(n instanceof Element)) {
+                return
+            }
+
+            this.notifyMounted(n)
+        })
     }
 
     private determineBindings(node: Node) {

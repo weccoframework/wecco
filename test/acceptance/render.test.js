@@ -186,6 +186,25 @@ describe("render", () => {
         });
 
         await fixture.page.evaluate(() => {
+            const comp = () => {
+                const onMount = () => {
+                    window.mountCounter++;
+                };
+                return wecco.html`<h1 @mount=${onMount}>test-component</h1>`;
+            };
+            
+            (wecco.html`${comp()}`).updateElement(document.querySelector("#app"));
+        })
+        const count = await fixture.page.evaluate(() => window.mountCounter)
+        expect(count).toBe(1)
+    })
+
+    it("should invoke @mount for a custom element only once per mounting cycle", async () => {
+        await fixture.page.evaluate(() => {
+            window.mountCounter = 0;
+        });
+
+        await fixture.page.evaluate(() => {
             const comp = wecco.define("test-component", () => {
                 const onMount = () => {
                     window.mountCounter++;
