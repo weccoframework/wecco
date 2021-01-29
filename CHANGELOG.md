@@ -1,5 +1,9 @@
 # Changelog
 
+# Version 0.14.3
+
+* fix missing export of `UpdateTarget`
+
 # Version 0.14.2
 
 * fix redundant emit of `mounted` event when embedding one `HtmlTemplate`s inside another one
