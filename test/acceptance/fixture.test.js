@@ -17,8 +17,7 @@
  */
 
 const { resolve } = require("path")
-const { mkdir, stat, write } = require("fs")
-const { writeFile } = require("fs/promises")
+const { writeFile, mkdir, stat } = require("fs/promises")
 
 const puppeteer = require("puppeteer")
 const express = require("express")
@@ -83,16 +82,12 @@ after(() => {
     server.close()
 })
 
-before(cb => {
-    stat(reportsDirectory, exists => {
-        if (exists) {
-            return cb()
-        }
-
-        mkdir(reportsDirectory, { recursive: true }, err => {
-            cb(err)
-        })
-    })
+before(async () => {
+    try {
+        await stat(reportsDirectory)
+    } catch (e) {
+        await mkdir(reportsDirectory, { recursive: true })
+    }
 })
 
 const fixture = {
