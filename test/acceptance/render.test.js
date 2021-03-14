@@ -18,28 +18,42 @@
 
 const { expect } = require("iko")
 const { fixture: fixture } = require("./fixture.test")
+const { sleep } = require("./sleep")
+
+const GraceSleepTime = 10
 
 describe("render", () => {
     it("should render static text", async () => {
         await fixture.page.evaluate(() => wecco.define("test-component", () => "<p>test</p>")().mount("#app"))
+        await sleep(GraceSleepTime)
+
         const text = await fixture.page.$eval("#app p", e => e.innerText)
         expect(text).toBe("test")
     })
 
     it("should render dynamic text", async () => {
         await fixture.page.evaluate(() => wecco.define("test-component", (data) => `<p>${data.m}</p>`)({ m: "hello, world" }).mount("#app"))
+        await sleep(GraceSleepTime)
+
         const text = await fixture.page.$eval("#app p", e => e.innerText)
         expect(text).toBe("hello, world")
     })
 
     it("should render dynamic text using tagged text", async () => {
         await fixture.page.evaluate(() => wecco.define("test-component", (data) => wecco.html`<p>${data.m}</p>`)({ m: "hello, world" }).mount("#app"))
+        await sleep(GraceSleepTime)
+
         const text = await fixture.page.$eval("#app p", e => e.innerText)
         expect(text).toBe("hello, world")
     })
 
     it("should render array of static and dynamic text using tagged text", async () => {
-        await fixture.page.evaluate(() => wecco.define("test-component", (data) => [wecco.html`<p>${data.m}</p>`, `<p>hello, world again</p>`])({ m: "hello, world" }).mount("#app"))
+        await fixture.page.evaluate(() => wecco.define("test-component", (data) => [
+            wecco.html`<p>${data.m}</p>`,
+            `<p>hello, world again</p>`
+        ])({ m: "hello, world" }).mount("#app"))
+        await sleep(GraceSleepTime)
+
         let text = await fixture.page.$eval("#app p:nth-child(1)", e => e.innerText)
         expect(text).toBe("hello, world")
 
@@ -67,6 +81,8 @@ describe("render", () => {
             e.mount("#app")
             e.setData({ c: 1 })
         })
+        await sleep(GraceSleepTime)
+
         const text = await fixture.page.$eval("#app p", e => e.innerText)
         expect(text).toBe("1 times")
     })
@@ -76,6 +92,8 @@ describe("render", () => {
             wecco.define("test-component", data => wecco.html`<p>${data.text}</p>`, "text")
             document.querySelector("#app").innerHTML = "<test-component text='foo bar'></test-component>"
         })
+        await sleep(GraceSleepTime)
+
         const text = await fixture.page.$eval("#app p", e => e.innerText)
         expect(text).toBe("foo bar")
     })
@@ -121,8 +139,8 @@ describe("render", () => {
             .then(detail => expect(detail).toBe("foobar"))
     })
 
-    it("should emit and subscribe for custom events", () => {
-        return fixture.page.evaluate(() => {
+    it("should emit and subscribe for custom events", async () => {
+        await fixture.page.evaluate(() => {
             wecco.define("my-button", (data, context) => {
                 return wecco.html`<button @click=${() => context.emit("click")}>${data.label}</button>`
             }, "label")
@@ -142,12 +160,14 @@ describe("render", () => {
 
             document.querySelector("#app").innerHTML = "<count-clicks/>"
         })
-            .then(() => fixture.page.evaluate(() => {
-                document.querySelector("button").dispatchEvent(new MouseEvent("click"))
-            })
-            )
-            .then(() => fixture.page.$eval("#app count-clicks p", e => e.innerText))
-            .then(text => expect(text).toBe("You clicked me 1 times."))
+
+        await fixture.page.evaluate(() => {
+            document.querySelector("button").dispatchEvent(new MouseEvent("click"))
+        })
+        await sleep(GraceSleepTime)
+
+        const text = await fixture.page.$eval("#app count-clicks p", e => e.innerText)
+        expect(text).toBe("You clicked me 1 times.")
     })
 
     it("should invoke @mount eventlistener after component has been mounted", async () => {
@@ -155,20 +175,23 @@ describe("render", () => {
             wecco.define("my-component", () => wecco.html`<span @mount=${self => self.innerText = "foo"}>bar</span>`)
             document.querySelector("#app").innerHTML = "<my-component></my-component>"
         })
+        await sleep(GraceSleepTime)
+
         const text = await fixture.page.$eval("#app span", e => e.innerText)
         expect(text).toBe("foo")
     })
 
     it("should invoke @mount eventlistener after component has been updated", async () => {
         await fixture.page.evaluate(() => {
-            const c = wecco.define("my-component", (data) => wecco.html`<span @mount=${self => self.innerText = "foo"}>${data.message}</span>`)
+            window.mountCalled = 0
+            const c = wecco.define("my-component", (data) => wecco.html`<span @mount=${() => window.mountCalled++}>${data.message}</span>`)
             const e = c({ message: "hello" })
             e.mount("#app")
             e.setData({ message: "world" })
         })
+        await sleep(GraceSleepTime)
 
-        const text = await fixture.page.$eval("#app span", e => e.innerText)
-        expect(text).toBe("foo")
+        expect(await fixture.page.evaluate(() => window.mountCalled)).toBe(2)
     })
 
     it("should invoke @mount eventlistener after nested component has been mounted", async () => {
@@ -176,6 +199,8 @@ describe("render", () => {
             wecco.define("my-component", () => wecco.html`<div><span @mount=${self => self.innerText = "foo"}>bar</span></div>`)
             document.querySelector("#app").innerHTML = "<my-component></my-component>"
         })
+        await sleep(GraceSleepTime)
+
         const text = await fixture.page.$eval("#app div span", e => e.innerText)
         expect(text).toBe("foo")
     })
@@ -183,18 +208,17 @@ describe("render", () => {
     it("should invoke @mount only once per mounting cycle", async () => {
         await fixture.page.evaluate(() => {
             window.mountCounter = 0;
-        });
-
-        await fixture.page.evaluate(() => {
             const comp = () => {
                 const onMount = () => {
                     window.mountCounter++;
                 };
                 return wecco.html`<h1 @mount=${onMount}>test-component</h1>`;
             };
-            
-            (wecco.html`${comp()}`).updateElement(document.querySelector("#app"));
+
+            wecco.updateElement(document.querySelector("#app"), wecco.html`${comp()}`);
         })
+        await sleep(GraceSleepTime)
+
         const count = await fixture.page.evaluate(() => window.mountCounter)
         expect(count).toBe(1)
     })
@@ -202,18 +226,88 @@ describe("render", () => {
     it("should invoke @mount for a custom element only once per mounting cycle", async () => {
         await fixture.page.evaluate(() => {
             window.mountCounter = 0;
-        });
-
-        await fixture.page.evaluate(() => {
             const comp = wecco.define("test-component", () => {
                 const onMount = () => {
-                    window.mountCounter++;
-                };
-                return wecco.html`<h1 @mount=${onMount}>test-component</h1>`;
-            });
-            (wecco.html`${comp()}`).updateElement(document.querySelector("#app"));
+                    window.mountCounter++
+                }
+                return wecco.html`<h1 @mount=${onMount}>test-component</h1>`
+            })
+
+            wecco.updateElement(document.querySelector("#app"), comp())
         })
+        await sleep(GraceSleepTime)
+
         const count = await fixture.page.evaluate(() => window.mountCounter)
         expect(count).toBe(1)
+    })
+
+    it("should invoke @mount for a custom element wrapped in html tagged string only once per mounting cycle", async () => {
+        await fixture.page.evaluate(() => {
+            window.mountCounter = 0;
+            const comp = wecco.define("test-component", () => {
+                const onMount = () => {
+                    window.mountCounter++
+                }
+                return wecco.html`<h1 @mount=${onMount}>test-component</h1>`
+            })
+
+            wecco.updateElement(document.querySelector("#app"), wecco.html`<div>${comp()}</div>`)
+        })
+        await sleep(GraceSleepTime)
+
+        const count = await fixture.page.evaluate(() => window.mountCounter)
+        expect(count).toBe(1)
+    })
+
+    it("should invoke @mount for nested html template", async () => {
+        await fixture.page.evaluate(() => {
+            window.mountCalled = 0
+            wecco.updateElement("#app", wecco.html`<div>${wecco.html`<span @mount=${() => { window.mountCalled++ }}></span>`}</div>`)
+        })
+        await sleep(GraceSleepTime)
+
+        const mountCalled = await fixture.page.evaluate(() => window.mountCalled)
+        expect(mountCalled).toBe(1)
+    })
+
+    it("should invoke @mount for deeply nested html template", async () => {
+        await fixture.page.evaluate(() => {
+            window.mountCalled = 0
+            wecco.updateElement("#app", wecco.html`<div>${wecco.html`<div>${wecco.html`<span @mount=${() => { window.mountCalled++ }}></span>`}</div>`}</div>`)
+        })
+        await sleep(GraceSleepTime)
+
+        const mountCalled = await fixture.page.evaluate(() => window.mountCalled)
+        expect(mountCalled).toBe(1)
+    })
+
+    it("render should only re-render changed elements", async () => {
+        await fixture.page.evaluate(() => {
+            document.test = {}
+            document.test.app = document.body.querySelector("#app")
+            document.test.renderText = text => {
+                wecco.updateElement(document.test.app, wecco.html`<div>
+    <p>${text}</p>
+</div>`)
+            }
+            document.test.renderText("foo")
+            document.test.app.querySelector("div").setAttribute("data-test-marker", "1")
+        })
+
+        let text = await fixture.page.evaluate(() => document.querySelector("#app div p").innerText)
+        expect(text).toBe("foo")
+
+        let testMarker = await fixture.page.evaluate(() => document.querySelector("#app div").getAttribute("data-test-marker"))
+        expect(testMarker).toBe("1")
+
+        await fixture.page.evaluate(() => {
+            document.test.renderText("bar")
+        })
+
+        text = await fixture.page.evaluate(() => document.querySelector("#app div p").innerText)
+        expect(text).toBe("bar")
+
+        testMarker = await fixture.page.evaluate(() => document.querySelector("#app div").getAttribute("data-test-marker"))
+        expect(testMarker).toBe("1")
     })
 })

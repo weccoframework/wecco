@@ -65,21 +65,31 @@ export function isElementUpdate(arg: any): arg is ElementUpdate {
  * `updateElement` applies the given update request to the given target.
  * @param target the target to update
  * @param request the request
- * @param insertBefore the insertion point
  */
-export function updateElement(target: UpdateTarget, request: ElementUpdate, insertBefore?: Node): void {
+export function updateElement(target: UpdateTarget | ElementSelector, request: ElementUpdate): void {
+    const targetElement = typeof target === "string" 
+        ? resolve(target)
+        : target
+
     if (Array.isArray(request)) {
-        request.forEach(r => updateElement(target, r, insertBefore))
+        removeAllChildren(targetElement)        
+        request.forEach(r => {
+            const tpl = document.createElement("div")
+            updateElement(tpl, r)
+            moveAllChildren(tpl, targetElement)
+        })
     } else if (typeof (request) === "string") {
-        const dummy = document.createElement("div")
-        dummy.innerHTML = request
-        dummy.childNodes.forEach(n => target.insertBefore(dummy.removeChild(n), insertBefore))
+        removeAllChildren(targetElement)
+        const tpl = document.createElement("div")
+        tpl.innerHTML = request
+        moveAllChildren(tpl, targetElement)
     } else if (request instanceof Element) {
-        target.insertBefore(request, insertBefore)
+        removeAllChildren(targetElement)
+        targetElement.appendChild(request)
     } else if (isElementUpdater(request)) {
-        request.updateElement(target, insertBefore)
+        request.updateElement(targetElement)
     } else {
-        request(target, insertBefore)
+        request(targetElement)
     }
 }
 
@@ -116,5 +126,16 @@ export function resolve(selector: ElementSelector, parent?: Element): Element {
 export function removeAllChildren(node: Node) {
     while (node.firstChild) {
         node.removeChild(node.firstChild)
+    }
+}
+
+/**
+ * Moves all children from source to target.
+ * @param source source element to remove nodes from
+ * @param target target element to append nodes to
+ */
+export function moveAllChildren(source: Node, target: Node, insertBefore?: Node) {
+    while(source.firstChild) {
+        target.insertBefore(source.removeChild(source.firstChild), insertBefore)
     }
 }

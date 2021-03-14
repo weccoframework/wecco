@@ -210,23 +210,11 @@ export abstract class WeccoElement<T> extends HTMLElement {
                         this.setAttribute(attributeNameForModelKey(k), (this.data as any)[k])
                     }
                 })
-                this.updateDom(true)
+                this.updateDom()
             })
     }
 
-    private updateDom(removePreviousDom: boolean = false) {
-        if (removePreviousDom) {
-            let host: Node
-
-            if (this.shadowRoot) {
-                host = this.shadowRoot
-            } else {
-                host = this
-            }
-
-            removeAllChildren(host)
-        }
-
+    private updateDom() {
         const elementUpdate = this.renderCallback(this.data || ({} as T), this.renderContext)
         this.updateRequested = false
 

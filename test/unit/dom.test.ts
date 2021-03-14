@@ -20,7 +20,7 @@ import { expect } from "iko"
 import { resolve, removeAllChildren, updateElement } from "../../src/dom"
 import { html } from "../../src/html"
 
-describe("dom.ts", async () => {
+describe("dom.ts", () => {
     afterEach(() => {
         document.body.innerHTML = ""
     })
@@ -67,41 +67,42 @@ describe("dom.ts", async () => {
 
     describe("updateElement", () => {
         let el: Element
-        beforeEach(() => {
+
+        beforeEach(function () {
             el = document.createElement("div")
         })
 
-        describe("w/ string", () => {
+        it("w/ string", () => {
             updateElement(el, "<span>hello, world</span>")
-            expect(el.childNodes.length).toBe(0)
+            expect(el.childNodes.length).toBe(1)
             expect(el.childNodes[0].textContent).toBe("hello, world")
         })
 
-        describe("w/ element", () => {
+        it("w/ element", () => {
             const span = document.createElement("span")
             span.textContent = "hello, world"
             updateElement(el, span)
-            expect(el.childNodes.length).toBe(0)
+            expect(el.childNodes.length).toBe(1)
             expect(el.childNodes[0].textContent).toBe("hello, world")
         })
 
-        describe("w/ element update function", () => {
+        it("w/ element update function", () => {
             updateElement(el, (e: Element) => {
                 const span = document.createElement("span")
                 span.textContent = "hello, world"
                 e.appendChild(span)
             })
-            expect(el.childNodes.length).toBe(0)
+            expect(el.childNodes.length).toBe(1)
             expect(el.childNodes[0].textContent).toBe("hello, world")
         })
 
-        describe("w/ element updater", () => {
+        it("w/ element updater", () => {
             updateElement(el, html`<span>hello, world</span>`)
-            expect(el.childNodes.length).toBe(0)
+            expect(el.childNodes.length).toBe(1)
             expect(el.childNodes[0].textContent).toBe("hello, world")
         })
 
-        describe("w/ array", () => {
+        it("w/ array", () => {
             const span = document.createElement("span")
             span.textContent = "hello, world #3"
 
@@ -116,6 +117,36 @@ describe("dom.ts", async () => {
                 expect(el.childNodes[1].textContent).toBe("hello, world #2")
                 expect(el.childNodes[3].textContent).toBe("hello, world #3")
             })
+        })
+
+        it("w/ string should replace previous content", () => {
+            const span = document.createElement("span")
+            span.textContent = "remove me"
+            el.appendChild(span)
+
+            updateElement(el, "<span>keep me</span>")
+            expect(el.innerHTML).toBe("<span>keep me</span>")
+        })
+
+        it("w/ element should replace previous content", () => {
+            const span = document.createElement("span")
+            span.textContent = "remove me"
+            el.appendChild(span)
+
+            const replacement = document.createElement("span")
+            replacement.textContent = "keep me"
+
+            updateElement(el, replacement)
+            expect(el.innerHTML).toBe("<span>keep me</span>")
+        })
+
+        it("w/ array should replace previous content", () => {
+            const span = document.createElement("span")
+            span.textContent = "remove me"
+            el.appendChild(span)
+
+            updateElement(el, ["<span>keep me</span>", "<span>and me</span>"])
+            expect(el.innerHTML).toBe("<span>keep me</span><span>and me</span>")
         })
     })
 })

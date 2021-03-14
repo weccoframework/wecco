@@ -17,7 +17,8 @@
  */
 
 const { resolve } = require("path")
-const { exists, mkdir } = require("fs")
+const { mkdir, stat, write } = require("fs")
+const { writeFile } = require("fs/promises")
 
 const puppeteer = require("puppeteer")
 const express = require("express")
@@ -25,7 +26,7 @@ const rollup = require("rollup")
 const typescript = require("rollup-plugin-typescript2")
 const commonjs = require("rollup-plugin-commonjs")
 
-const reportsDirectory = resolve(process.cwd(), "reports", "screenshots")
+const reportsDirectory = resolve(process.cwd(), "reports")
 
 let server
 
@@ -83,7 +84,7 @@ after(() => {
 })
 
 before(cb => {
-    exists(reportsDirectory, exists => {
+    stat(reportsDirectory, exists => {
         if (exists) {
             return cb()
         }
@@ -105,15 +106,29 @@ before(async () => {
     fixture.browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] })
 })
 
-beforeEach(async () => {
+beforeEach(async function () {
+    const test = this.currentTest    
+    test.messages = []
+
     fixture.page = await fixture.browser.newPage()
+
+    fixture.page
+        .on("console", message => {
+            test.messages.push(`${message.type().toUpperCase()} ${message.text()}`)
+        })
+        .on("pageerror", ({ message }) => test.messages.push(`PAGE ERROR: ${message}`))
+
     await fixture.page.goto("http://localhost:8888/")
 })
 
-afterEach(async function renderScreenshot() {
+afterEach(async function renderScreenshot() {    
     await fixture.page.screenshot({
         path: resolve(reportsDirectory, `${this.currentTest.title}.png`),
     })
+
+    const html = await fixture.page.evaluate(() => document.body.innerHTML)
+    await writeFile(resolve(reportsDirectory, `${this.currentTest.title}.html`), `<html><head></head><body>${html}</body></html>`, "utf8")
+    await writeFile(resolve(reportsDirectory, `${this.currentTest.title}.log`), this.currentTest.messages.join("\n"), "utf8")
 })
 
 after(async () => {

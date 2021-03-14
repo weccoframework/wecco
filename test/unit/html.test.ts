@@ -17,16 +17,17 @@
  */
 
 import { expect } from "iko"
+import { updateElement } from "../../src/dom"
 import { html } from "../../src/html"
 
 describe("html.ts", async () => {
-    afterEach(() => {
-        document.body.innerHTML = ""
+    beforeEach(() => {
+        document.body = document.createElement("body")
     })
 
     describe("html", () => {
         it("should create html w/o placeholder", () => {
-            (html`<p>Hello, world</p>`).updateElement(document.body)
+            updateElement(document.body, html`<p>Hello, world</p>`)
 
             expect(document.body.innerHTML).toBe("<p>Hello, world</p>")
         })
@@ -34,51 +35,51 @@ describe("html.ts", async () => {
         it("should create html w/ placeholder", () => {
             const gretee = "world";
 
-            (html`<p>Hello, ${gretee}</p>`).updateElement(document.body)
+            updateElement(document.body, html`<p>Hello, ${gretee}</p>`)
 
-            expect(document.body.innerHTML).toMatch(/^<p data-wecco-html-id="[a-z0-9]{6}">Hello, world<\/p>/)
+            expect(document.body.innerHTML).toMatch(/^<p data-wecco-id="\d">Hello, <!--{{wecco:0\/start}}-->world<!--{{wecco:0\/end}}--><\/p>/)
         })
 
         it("should create html w/ toplevel placeholder", () => {
             const gretee = "world";
 
-            (html`<p>Hello</p>${gretee}`).updateElement(document.body)
+            updateElement(document.body, html`<p>Hello</p>${gretee}`)
 
-            expect(document.body.innerHTML).toMatch(/^<p>Hello<\/p>world/)
+            expect(document.body.innerHTML).toMatch(/^<p>Hello<\/p><!--{{wecco:0\/start}}-->world<!--{{wecco:0\/end}}-->/)
         })
 
         it("should create html w/ multiple adjecent placeholder", () => {
             const message = "Hello, ";
             const gretee = "world";
 
-            (html`<p>${message}${gretee}</p>`).updateElement(document.body)
+            updateElement(document.body, html`<p>${message}${gretee}</p>`)
 
-            expect(document.body.innerHTML).toMatch(/^<p data-wecco-html-id="[a-z0-9]{6}">Hello, world<\/p>/)
+            expect(document.body.innerHTML).toMatch(/^<p data-wecco-id="\d"><!--{{wecco:0\/start}}-->Hello, <!--{{wecco:0\/end}}--><!--{{wecco:1\/start}}-->world<!--{{wecco:1\/end}}--><\/p>/)
         })
 
         it("should create html w/ attribute placeholder", () => {
             const classes = "hero small"
 
             const template = (html`<p class=${classes}>Hello, world</p>`)
-            template.updateElement(document.body)
+            updateElement(document.body, template)
 
-            expect(document.body.innerHTML).toMatch(/^<p class="hero small" data-wecco-html-id="[a-z0-9]{6}">Hello, world<\/p>$/)
+            expect(document.body.innerHTML).toMatch(/^<p class="hero small" data-wecco-id="\d">Hello, world<\/p>$/)
         })
 
         it("should create html w/ boolean attribute placeholder set to false", () => {
             const disabled = false
             const template = (html`<a ?disabled=${disabled}>Hello, world</a>`)
-            template.updateElement(document.body)
+            updateElement(document.body, template)
 
-            expect(document.body.innerHTML).toMatch(/^<a data-wecco-html-id="[a-z0-9]{6}">Hello, world<\/a>$/)
+            expect(document.body.innerHTML).toMatch(/^<a data-wecco-id="\d">Hello, world<\/a>$/)
         })
 
         it("should create html w/ boolean attribute placeholder set to true", () => {
             const disabled = true
             const template = (html`<a ?disabled=${disabled}>Hello, world</a>`)
-            template.updateElement(document.body)
+            updateElement(document.body, template)
 
-            expect(document.body.innerHTML).toMatch(/^<a data-wecco-html-id="[a-z0-9]{6}" disabled="disabled">Hello, world<\/a>$/)
+            expect(document.body.innerHTML).toMatch(/^<a data-wecco-id="\d" disabled="disabled">Hello, world<\/a>$/)
         })
 
         it("should create html w/ event placeholder", () => {
@@ -86,12 +87,28 @@ describe("html.ts", async () => {
             const callback = () => { clicked = true }
 
             const template = (html`<a @click=${callback}>Hello, world</a>`)
-            template.updateElement(document.body)
+            updateElement(document.body, template)
 
-            expect(document.body.innerHTML).toMatch(/^<a data-wecco-html-id="[a-z0-9]{6}">Hello, world<\/a>$/)
+            expect(document.body.innerHTML).toMatch(/^<a data-wecco-id="\d">Hello, world<\/a>$/)
 
             document.querySelector("a").dispatchEvent(new MouseEvent("click"))
             expect(clicked).toBe(true)
+        })
+
+        it("should render nested html template and propagate @mount event", () => {
+            let mountCalled = false
+            updateElement(document.body, html`<div>${html`<span @mount=${() => { mountCalled = true }}></span>`}</div>`)        
+            expect(mountCalled).toBe(true)
+        })
+
+        it("should re-render nested html template and propagate @mount event", () => {
+            let mountCalled = 0
+
+            updateElement(document.body, html`<div>${html`<span @mount=${() => { mountCalled++ }}></span>`}</div>`)
+            expect(mountCalled).toBe(1)
+            
+            updateElement(document.body, html`<div>${html`<span @mount=${() => { mountCalled++ }}></span>`}</div>`)
+            expect(mountCalled).toBe(2)
         })
     })
 })

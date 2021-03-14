@@ -18,6 +18,7 @@
 
 const { expect } = require("iko")
 const { fixture: fixture } = require("./fixture.test")
+const { sleep } = require("./sleep")
 
 describe("events", () => {
     it("should emit custom events", () => {
@@ -91,5 +92,30 @@ describe("events", () => {
             .then(() => new Promise(resolve => setTimeout(resolve, 20)))
             .then(() => fixture.page.$eval("#app", e => e.innerText))
             .then(text => expect(text).toBe("clicked"))
+    })
+    
+    it("should handle multiple elements with the same listener correct", async () => {
+        await fixture.page.evaluate(() => {
+            window.clickStats = {
+                one: 0,
+                two: 0,
+            }
+            wecco.updateElement("#app", wecco.html`
+                <a @click=${() => window.clickStats.one++}>One</a>
+                <a @click=${() => window.clickStats.two++}>Two</a>
+            `)
+        })
+        await sleep(10)
+        await fixture.page.evaluate(() => {
+            document.querySelector("#app a:nth-of-type(1)").dispatchEvent(new MouseEvent("click"))
+            document.querySelector("#app a:nth-of-type(2)").dispatchEvent(new MouseEvent("click"))
+            document.querySelector("#app a:nth-of-type(2)").dispatchEvent(new MouseEvent("click"))
+        })
+        await sleep(10)
+
+        const stats = await fixture.page.evaluate(() => window.clickStats)
+
+        expect(stats.one).toBe(1)
+        expect(stats.two).toBe(2)
     })
 })

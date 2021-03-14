@@ -64,8 +64,7 @@ class AppContextImpl<MODEL, MESSAGE> implements AppContext<MESSAGE> {
 
         if (this.renderUpdateTimeout === null) {
             this.renderUpdateTimeout = window.setTimeout(() => {
-                this.renderUpdateTimeout = null
-                removeAllChildren(this.mointPoint)
+                this.renderUpdateTimeout = null                
                 updateElement(this.mointPoint, this.view(this.model, this))        
             }, 5)
         }

@@ -16,7 +16,10 @@
  * limitations under the License.
  */
 
-import { ElementUpdater, isElementUpdate, updateElement, UpdateTarget } from "./dom"
+import { md5 } from "./md5"
+import { ElementUpdater, isElementUpdate, moveAllChildren, removeAllChildren, updateElement, UpdateTarget } from "./dom"
+import { EventRegistry } from "./eventregistry"
+import { WeccoElement } from "./element"
 
 /**
  * `html` is a string tag to be used with string templates. The tag generates
@@ -42,16 +45,7 @@ class HtmlTemplateCache {
     static readonly instance = new HtmlTemplateCache()
 
     static calculateCacheKey(strings: TemplateStringsArray): string {
-        let result = ""
-
-        strings.forEach((s, i) => {
-            result += s
-            if (i < strings.length - 1) {
-                result += `\${${i}}`
-            }
-        })
-
-        return result
+        return md5(strings.join(""))
     }
 
     private readonly entries = new Map<string, HtmlTemplate>()
@@ -69,17 +63,76 @@ class HtmlTemplateCache {
     }
 }
 
-const WeccoHtmlIdDataAttributeName = "data-wecco-html-id"
-
 interface Binding {
-    applyBinding(root: DocumentFragment, data: any[]): void
+    applyBinding(root: UpdateTarget, data: any[]): void
 }
 
-class CommentNodeBinding implements Binding {
-    constructor(private id: string | null, private index: number) { }
+class ElementSelector {
+    static root(): ElementSelector {
+        return new ElementSelector()
+    }
 
-    applyBinding(root: DocumentFragment, data: any[]): void {
-        const [insertPoint, comment] = this.findNode(root)
+    static build(target: Node, root: Node): ElementSelector {
+        const parts = []
+
+        while (target) {
+            if (target === root) {
+                break
+            }
+            parts.push(`${target.nodeName.toLowerCase()}:nth-of-type(${ElementSelector.countPreviousSiblingsOfSameType(target) + 1})`)
+            target = target.parentNode
+        }
+
+        return new ElementSelector(parts.reverse().join(">"))
+    }
+
+    private static countPreviousSiblingsOfSameType(node: Node): number {
+        let count = 0
+        let sibling = node.previousSibling
+        while (sibling) {
+            if (sibling.nodeName === node.nodeName) {
+                count++
+            }
+            sibling = sibling.previousSibling
+        }
+
+        return count
+    }
+
+    constructor(private readonly selector?: string) { }
+
+    resolve(root: UpdateTarget): Node {
+        if (!this.selector) {
+            return root
+        }
+        return root.querySelector(this.selector)
+    }
+
+    toString(): string {
+        return this.selector ?? ""
+    }
+}
+
+const ElementNotFound = "element not found"
+
+class CommentNodeBinding implements Binding {
+    constructor(private location: ElementSelector, private index: number) { }
+
+    applyBinding(root: UpdateTarget, data: any[]): void {
+        const [insertPoint, startComment, endComment] = this.findNode(root)
+
+        const nodesToRemove: Array<Node> = []
+        let startSeen = false
+        for (let child of Array.from(insertPoint.childNodes)) {
+            if (child === startComment) {
+                startSeen = true
+            } else if (child === endComment) {
+                break
+            } else if (startSeen) {
+                nodesToRemove.push(child)
+            }
+        }
+        nodesToRemove.forEach(insertPoint.removeChild.bind(insertPoint))
 
         const d = data[this.index]
         let dataArray: any[]
@@ -92,65 +145,77 @@ class CommentNodeBinding implements Binding {
 
         dataArray.forEach(d => {
             if (isElementUpdate(d)) {
-                updateElement(insertPoint, d, comment)
+                const tpl = document.createElement("div")
+                updateElement(tpl, d)
+                moveAllChildren(tpl, insertPoint, endComment)
             } else {
-                insertPoint.insertBefore(document.createTextNode(d), comment)
+                insertPoint.insertBefore(document.createTextNode(d), endComment)
             }
         })
-
-        insertPoint.removeChild(comment)
     }
 
-    private findNode(root: DocumentFragment): [Element | DocumentFragment, Comment | null] {
-        let parentElement: Element | DocumentFragment
+    private findNode(root: UpdateTarget): [Node, Comment | undefined, Comment | undefined] {
+        let parent = this.location.resolve(root)
 
-        if (this.id === null) {
-            parentElement = root
-        } else {
-            parentElement = root.querySelector(`[${WeccoHtmlIdDataAttributeName}="${this.id}"]`)
-        }
+        if (parent) {
+            const startCommentText = `{{wecco:${this.index}/start}}`
+            const endCommentText = `{{wecco:${this.index}/end}}`
+            let startComment: Comment | undefined = undefined
+            let endComment: Comment | undefined = undefined
 
-        if (parentElement) {
-            for (let child of Array.from(parentElement.childNodes)) {
-                if ((child instanceof Comment) && (<Comment>child).data === `{{wecco-html-${this.index}}}`) {
-                    return [parentElement, child]
+            for (let child of Array.from(parent.childNodes)) {
+                if (child instanceof Comment) {
+                    if (child.data === startCommentText) {
+                        startComment = child
+                    } else if (child.data === endCommentText) {
+                        endComment = child
+                    }
+
+                    if ((typeof startComment !== "undefined") && (typeof endComment !== "undefined")) {
+                        return [parent, startComment, endComment]
+                    }
                 }
             }
         }
 
-        console.error(`No such element with ${WeccoHtmlIdDataAttributeName}=${this.id} nested under `, root)
-        return [parentElement, null]
+        console.warn(`No such element with selector "${this.location}" nested under `, root)
+
+        throw ElementNotFound
     }
 }
 
 class AttributeBinding implements Binding {
-    constructor(private attributeName: string, private elementId: string, private dataIndex: number) { }
+    constructor(private attributeName: string, private location: ElementSelector, private dataIndex: number) { }
 
-    applyBinding(root: DocumentFragment, data: any[]): void {
-        const node = root.querySelector(`[${WeccoHtmlIdDataAttributeName}="${this.elementId}"]`)
+    applyBinding(root: UpdateTarget, data: any[]): void {
+        const node = this.location.resolve(root)
 
         if (!(node instanceof Element)) {
-            console.error(`No such element with ${WeccoHtmlIdDataAttributeName}=${this.elementId} nested under `, root)
-            return
+            console.warn(`No such element with selector "${this.location}" nested under `, root)
+            throw ElementNotFound
         }
 
         const element = node as Element
 
         if (this.attributeName.startsWith("@")) {
-            if (element.getAttribute(this.attributeName) !== `{{wecco-html-${this.dataIndex}}}`) {
-                console.error("Invalid event listener binding:", element, this.attributeName)
-                return
-            }
+            // If this is the first time this binding is applied, remove the @... attribute
+            // from the DOM.
             element.removeAttribute(this.attributeName)
+
             const eventName = this.attributeName.substr(1)
+
+            EventRegistry.instance.removeAllEventListeners(element, eventName)
+
+            let callback: any
             if (eventName === "mount") {
                 // The "mount" event is special to HtmlTemplates. It allows a listener to 
                 // work on the actual DOM element, once it has been mounted. Thus, we 
                 // bind the supplied listener to receive the element.
-                element.addEventListener(eventName, data[this.dataIndex].bind(null, element))
+                callback = data[this.dataIndex].bind(null, element)
             } else {
-                element.addEventListener(eventName, data[this.dataIndex])
+                callback = data[this.dataIndex]
             }
+            EventRegistry.instance.addEventListener(element, eventName, callback)
             return
         }
 
@@ -167,7 +232,7 @@ class AttributeBinding implements Binding {
         let valueFromData = data[this.dataIndex] ?? ""
 
         let value = element.getAttribute(this.attributeName)
-        value = value.replace(`{{wecco-html-${this.dataIndex}}}`, valueFromData)
+        value = value.replace(`{{wecco:${this.dataIndex}}}`, valueFromData)
 
         if (this.attributeName === "value" && element instanceof HTMLTextAreaElement) {
             element.innerText = value
@@ -188,15 +253,19 @@ class HtmlTemplate implements ElementUpdater {
     private readonly template: HTMLTemplateElement
     private readonly bindings: Binding[] = []
 
+    static calculateId(strings: TemplateStringsArray): string {
+        return md5(HtmlTemplate.generateHtml(strings))
+    }
+
     static fromTemplateString(strings: TemplateStringsArray, args: any[]): HtmlTemplate {
         const templateString = HtmlTemplate.generateHtml(strings)
 
         const template = document.createElement("template")
         template.innerHTML = templateString
-        return new HtmlTemplate(templateString, args, template)
+        return new HtmlTemplate(HtmlTemplate.calculateId(strings), templateString, args, template)
     }
 
-    private constructor(templateString: string, data: any[], template: HTMLTemplateElement) {
+    private constructor(private readonly id: string, templateString: string, data: any[], template: HTMLTemplateElement) {
         this.templateString = templateString
         this.data = data
         this.template = template
@@ -204,7 +273,7 @@ class HtmlTemplate implements ElementUpdater {
     }
 
     clone(args: any): HtmlTemplate {
-        return new HtmlTemplate(this.templateString, args, this.template)
+        return new HtmlTemplate(this.id, this.templateString, args, this.template)
     }
 
     createContentElements(): Node[] {
@@ -213,61 +282,94 @@ class HtmlTemplate implements ElementUpdater {
         return Array.prototype.slice.call(content.childNodes)
     }
 
-    updateElement(host: UpdateTarget, insertBefore?: Node) {
-        this.createContentElements().forEach(e => {
-            host.insertBefore(e, insertBefore)
-            if (e.isConnected) {
-                this.notifyMounted(e)
-            }    
-        })
-    }
-
-    private notifyMounted(e: Node) {
-        e.dispatchEvent(new CustomEvent("mount", {
-            bubbles: false,
-        }))
-
-        if (e.nodeName.indexOf("-") > 0) {
-            // Element is a custom element. Stop visiting it's children.
-            return
+    updateElement(host: UpdateTarget) {
+        if (host instanceof Element && host.getAttribute("data-wecco-template-id") === this.id) {
+            try {
+                this.bindings.forEach(b => b.applyBinding(host, this.data))
+                if (host.isConnected) {
+                    this.notifyMounted(host.childNodes)
+                }
+                return
+            } catch (e) {
+                if (e !== ElementNotFound) {
+                    throw e
+                }
+                // Some external DOM manipulation occured after this template has been
+                // rendered the last time. Continue by re-rendering the template to
+                // ensure consistency.
+                console.warn("Element has been modified. Rerendering", host)
+            }
         }
 
-        e.childNodes.forEach(n => {
-            if (!(n instanceof Element)) {
+        removeAllChildren(host)
+        this.createContentElements().forEach(e => {
+            host.appendChild(e)
+        })
+        
+        if (host instanceof Element) {
+            host.setAttribute("data-wecco-template-id", this.id)
+        }
+
+        if (host.isConnected) {
+            this.notifyMounted(host.childNodes)
+        }
+    }
+
+    private notifyMounted(nodes: NodeList) {
+        nodes.forEach(n => {
+            if (!(n instanceof EventTarget)) {
+                return
+            }
+        
+            n.dispatchEvent(new CustomEvent("mount", {
+                bubbles: false,
+            }))
+            
+            if (n instanceof WeccoElement) {
+                // Do not apply mount events on children of wecco custom elements.
+                // These emit their own mount event.
                 return
             }
 
-            this.notifyMounted(n)
+            this.notifyMounted(n.childNodes)
         })
     }
 
-    private determineBindings(node: Node) {
+    private determineBindings(root: Node) {
+        this.determineNodeBindings(root, root)
+    }
+
+    private determineNodeBindings(node: Node, root: Node) {
         if (node instanceof Comment) {
-            const pattern = /^\{\{wecco-html-([0-9]+)\}\}$/g
+            const pattern = /^\{\{wecco:([0-9]+)(\/[a-z]+)?\}\}$/g
             while (true) {
                 const match = pattern.exec(node.textContent || "")
                 if (!match) {
                     break
                 }
 
-                let id: string | null
-                if (!node.parentElement) {
-                    id = null
-                } else if (node.parentElement.hasAttribute(WeccoHtmlIdDataAttributeName)) {
-                    id = node.parentElement.getAttribute(WeccoHtmlIdDataAttributeName)
-                } else {
-                    id = HtmlTemplate.generateId()
-                    node.parentElement.setAttribute(WeccoHtmlIdDataAttributeName, id)
+                let selector: ElementSelector
+                if (!node.parentElement || node.parentElement === root) {
+                    selector = ElementSelector.root()
+                } else {                    
+                    let weccoId = node.parentElement.getAttribute("data-wecco-id")
+                    if (!weccoId) {
+                        weccoId = HtmlTemplate.generateId()
+                        node.parentElement.setAttribute("data-wecco-id", weccoId)
+                    }
+                    selector = new ElementSelector(`[data-wecco-id="${weccoId}"]`)
                 }
 
-                this.bindings.push(new CommentNodeBinding(id, parseInt(match[1])))
+                this.bindings.push(new CommentNodeBinding(selector, parseInt(match[1])))
             }
+
+            return
         }
 
         if (node instanceof Element) {
             node.getAttributeNames().forEach(attr => {
                 const value = node.getAttribute(attr)
-                const pattern = /\{\{wecco-html-([0-9]+)\}\}/g
+                const pattern = /\{\{wecco:([0-9]+)\}\}/g
 
                 while (true) {
                     const match = pattern.exec(value)
@@ -275,21 +377,19 @@ class HtmlTemplate implements ElementUpdater {
                         break
                     }
 
-                    let id: string
-                    if (node.hasAttribute(WeccoHtmlIdDataAttributeName)) {
-                        id = node.getAttribute(WeccoHtmlIdDataAttributeName)
-                    } else {
-                        id = HtmlTemplate.generateId()
-                        node.setAttribute(WeccoHtmlIdDataAttributeName, id)
-                    }
-
-                    this.bindings.push(new AttributeBinding(attr, id, parseInt(match[1])))
+                    let weccoId = node.getAttribute("data-wecco-id")
+                    if (!weccoId) {
+                        weccoId = HtmlTemplate.generateId()
+                        node.setAttribute("data-wecco-id", weccoId)
+                    }                    
+                    
+                    this.bindings.push(new AttributeBinding(attr, new ElementSelector(`[data-wecco-id="${weccoId}"]`), parseInt(match[1])))
                 }
             })
         }
 
-        node.childNodes.forEach((c, i) => {
-            this.determineBindings(c)
+        node.childNodes.forEach(c => {
+            this.determineNodeBindings(c, root)
         })
     }
 
@@ -301,20 +401,20 @@ class HtmlTemplate implements ElementUpdater {
             if (i < strings.length - 1) {
                 if (PlaceholderAttributeRegex.test(html) || PlaceholderSingleQuotedAttributeRegex.test(html) || PlaceholderDoubleQuotedAttributeRegex.test(html)) {
                     // Placeholder is used as an attribute value. Insert placeholder
-                    html += `{{wecco-html-${i}}}`
+                    html += `{{wecco:${i}}}`
                 } else {
                     // Placeholder is used as text content. Insert a comment node
-                    html += `<!--{{wecco-html-${i}}}-->`
+                    html += `<!--{{wecco:${i}/start}}--><!--{{wecco:${i}/end}}-->`
                 }
             }
         })
 
-        return html
+        return html.trim()
     }
 
-    private static generateId() {
-        const firstPart = (Math.random() * 46656) | 0
-        const secondPart = (Math.random() * 46656) | 0
-        return ("000" + firstPart.toString(36)).slice(-3) + ("000" + secondPart.toString(36)).slice(-3)
+    private static idCounter = 0
+
+    private static generateId(): string {
+        return `${this.idCounter++}`
     }
 }

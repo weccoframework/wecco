@@ -15,7 +15,11 @@ function update(model: Model, message: Message): Model {
 }
 
 function view (model: Model, context: wecco.AppContext<Message>) {
-    return wecco.html`<p>
+    return wecco.html`
+    <p>
+        Click the button to increment the counter.
+    </p>
+    <p>
         <button class="btn btn-primary" @click=${() => context.emit("inc")}>
             You clicked me ${model.count} times
         </button>
