@@ -340,6 +340,13 @@ class HtmlTemplate implements ElementUpdater {
     }
 
     private determineNodeBindings(node: Node, root: Node) {
+        if (node instanceof WeccoElement) {
+            // Do not visit bindings in custom elements.
+            // Custom Elements have their own lifecycle and 
+            // are excluded from the normal render cycle.
+            return
+        }
+
         if (node instanceof Comment) {
             const pattern = /^\{\{wecco:([0-9]+)(\/[a-z]+)?\}\}$/g
             while (true) {
