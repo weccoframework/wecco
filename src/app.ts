@@ -16,7 +16,8 @@
  * limitations under the License.
  */
 
-import { updateElement, ElementUpdate, ElementSelector, resolve, removeAllChildren } from "./dom"
+import { ElementSelector, resolve } from "./dom"
+import { updateElement, ElementUpdate } from "./update"
 
 /**
  * A function that can initialize a model.
@@ -55,7 +56,7 @@ export function app<MODEL, MESSAGE>(modelInitialier: ModelInitializer<MODEL>, up
 class AppContextImpl<MODEL, MESSAGE> implements AppContext<MESSAGE> {
     private renderUpdateTimeout: number | null = null
 
-    constructor (private model: MODEL, private updater: Updater<MODEL, MESSAGE>, private view: View<MODEL, MESSAGE>, private mointPoint: Element) {
+    constructor(private model: MODEL, private updater: Updater<MODEL, MESSAGE>, private view: View<MODEL, MESSAGE>, private mointPoint: Element) {
         updateElement(this.mointPoint, this.view(this.model, this))
     }
 
@@ -64,8 +65,8 @@ class AppContextImpl<MODEL, MESSAGE> implements AppContext<MESSAGE> {
 
         if (this.renderUpdateTimeout === null) {
             this.renderUpdateTimeout = window.setTimeout(() => {
-                this.renderUpdateTimeout = null                
-                updateElement(this.mointPoint, this.view(this.model, this))        
+                this.renderUpdateTimeout = null
+                updateElement(this.mointPoint, this.view(this.model, this))
             }, 5)
         }
     }

@@ -18,7 +18,7 @@
 
 import { expect } from "iko"
 import { shadow } from "../../src/shadow"
-import { ElementUpdater } from "../../src/dom";
+import { ElementUpdater } from "../../src/update";
 
 describe("shadow.ts", async () => {
     afterEach(() => {

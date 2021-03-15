@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-import { ElementUpdateFunction, ElementUpdate, updateElement } from "./dom"
+import { ElementUpdateFunction, ElementUpdate, updateElement } from "./update"
 
 /**
  * `DoWithShadowCallback` can be used to automatically create a `ShadowRoot` for an element.

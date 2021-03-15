@@ -17,7 +17,7 @@
  */
 
 import { expect } from "iko"
-import { updateElement } from "../../src/dom"
+import { updateElement } from "../../src/update"
 import { html } from "../../src/html"
 
 describe("html.ts", async () => {

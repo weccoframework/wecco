@@ -16,7 +16,8 @@
  * limitations under the License.
  */
 
-import { ElementSelector, resolve, removeAllChildren, ElementUpdate, updateElement } from "./dom"
+import { ElementSelector, resolve } from "./dom"
+import { ElementUpdate, updateElement } from "./update"
 
 /**
  * `NotifyUpdateCallback` defines the type for functions that are called to notify of an element update.
@@ -285,14 +286,14 @@ export function define<T>(name: string, renderCallback: RenderCallback<T>, ...ob
  * @param modelKey the model key name
  * @returns the corresponding attribute name
  */
-function attributeNameForModelKey (modelKey: string): string {
+function attributeNameForModelKey(modelKey: string): string {
     let result = ""
     let wasUpper = false
 
     for (let c of modelKey) {
         if (c.toUpperCase() === c) {
             if (wasUpper) {
-                result += "-"                
+                result += "-"
             }
             result += c.toLowerCase()
             wasUpper = true
@@ -311,7 +312,7 @@ function attributeNameForModelKey (modelKey: string): string {
  * @param attributeName the attribute name
  * @returns the corresponding model key name
  */
-function modelKeyForAttributeName (attributeName: string): string {
+function modelKeyForAttributeName(attributeName: string): string {
     let result = ""
     let wasDash = false
 
