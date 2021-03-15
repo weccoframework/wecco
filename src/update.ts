@@ -29,7 +29,7 @@ import { ElementSelector, moveAllChildren, removeAllChildren, resolve } from "./
   * `ElementUpdateFunction` defines a type for callable objects that updates a target's content.
   */
  export interface ElementUpdateFunction {
-     (host: UpdateTarget, insertBefore?: Node): void
+     (host: UpdateTarget): void
  }
  
  /** 
@@ -40,10 +40,8 @@ import { ElementSelector, moveAllChildren, removeAllChildren, resolve } from "./
      /**
       * `updateElement` updates the content of the given target at the given `insertPoint`.
       * @param el the target to update
-      * @param insertBefore the insert point. Should be used as the second parameter to `Node.insertBefore`. Optional; 
-      * if not present, content should be appended.
       */
-     updateElement(el: UpdateTarget, insertBefore?: Node): void
+     updateElement(el: UpdateTarget): void
  }
  
  /**
