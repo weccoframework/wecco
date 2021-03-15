@@ -22,18 +22,18 @@ const { sleep } = require("./sleep")
 
 describe("updateElement", () => {
     it("should render static text", async () => {
-        await fixture.page.evaluate(() => wecco.updateElement("#app", "<p>test</p>"))
+        await fixture.page.evaluate(() => wecco.updateElement("#app", "test"))
         await sleep()
 
-        const text = await fixture.page.$eval("#app p", e => e.innerText)
+        const text = await fixture.page.$eval("#app", e => e.innerText)
         expect(text).toBe("test")
     })
 
     it("should render dynamic text", async () => {
-        await fixture.page.evaluate(() => wecco.updateElement("#app", `<p>${"hello, world"}</p>`))
+        await fixture.page.evaluate(() => wecco.updateElement("#app", `${"hello, world"}`))
         await sleep()
 
-        const text = await fixture.page.$eval("#app p", e => e.innerText)
+        const text = await fixture.page.$eval("#app", e => e.innerText)
         expect(text).toBe("hello, world")
     })
 
@@ -56,15 +56,12 @@ describe("updateElement", () => {
     it("should render array of static and dynamic text using tagged text", async () => {
         await fixture.page.evaluate(() => wecco.updateElement("#app", [
             wecco.html`<p>${"hello, world"}</p>`,
-            `<p>hello, world again</p>`
+            `hello, world again`
         ]))
         await sleep()
 
-        let text = await fixture.page.$eval("#app p:nth-child(1)", e => e.innerText)
-        expect(text).toBe("hello, world")
-
-        text = await fixture.page.$eval("#app p:nth-child(2)", e => e.innerText)
-        expect(text).toBe("hello, world again")
+        let text = await fixture.page.$eval("#app", e => e.innerHTML)
+        expect(text).toBe(`<p data-wecco-id="0"><!--{{wecco:0/start}}-->hello, world<!--{{wecco:0/end}}--></p>hello, world again`)
     })
 
     describe("mount event", () => {

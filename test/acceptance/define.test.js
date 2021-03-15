@@ -21,45 +21,15 @@ const { fixture: fixture } = require("./fixture.test")
 const { sleep } = require("./sleep")
 
 describe("define", () => {
-    describe("render", () => {
-        it("should render static text", async () => {
-            await fixture.page.evaluate(() => wecco.define("test-component", () => "<p>test</p>")().mount("#app"))
-            await sleep()
-    
-            const text = await fixture.page.$eval("#app p", e => e.innerText)
-            expect(text).toBe("test")
-        })
-    
-        it("should render dynamic text", async () => {
-            await fixture.page.evaluate(() => wecco.define("test-component", (data) => `<p>${data.m}</p>`)({ m: "hello, world" }).mount("#app"))
-            await sleep()
-    
-            const text = await fixture.page.$eval("#app p", e => e.innerText)
-            expect(text).toBe("hello, world")
-        })
-    
-        it("should render dynamic text using tagged text", async () => {
+    describe("render", () => {        
+        it("should render static element", async () => {
             await fixture.page.evaluate(() => wecco.define("test-component", (data) => wecco.html`<p>${data.m}</p>`)({ m: "hello, world" }).mount("#app"))
             await sleep()
     
             const text = await fixture.page.$eval("#app p", e => e.innerText)
             expect(text).toBe("hello, world")
         })
-    
-        it("should render array of static and dynamic text using tagged text", async () => {
-            await fixture.page.evaluate(() => wecco.define("test-component", (data) => [
-                wecco.html`<p>${data.m}</p>`,
-                `<p>hello, world again</p>`
-            ])({ m: "hello, world" }).mount("#app"))
-            await sleep()
-    
-            let text = await fixture.page.$eval("#app p:nth-child(1)", e => e.innerText)
-            expect(text).toBe("hello, world")
-    
-            text = await fixture.page.$eval("#app p:nth-child(2)", e => e.innerText)
-            expect(text).toBe("hello, world again")
-        })
-    
+        
         it("should render interactive element", () => {
             return fixture.page.evaluate(() => wecco
                 .define("test-component",
