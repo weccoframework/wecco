@@ -116,14 +116,20 @@ beforeEach(async function () {
     await fixture.page.goto("http://localhost:8888/")
 })
 
-afterEach(async function renderScreenshot() {    
+afterEach(async function renderScreenshot() {   
+    try {
+        await stat(resolve(reportsDirectory, this.currentTest.title))
+    } catch (e) {
+        await mkdir(resolve(reportsDirectory, this.currentTest.title))
+    }     
+
     await fixture.page.screenshot({
-        path: resolve(reportsDirectory, `${this.currentTest.title}.png`),
+        path: resolve(reportsDirectory, this.currentTest.title, "screen.png"),
     })
 
     const html = await fixture.page.evaluate(() => document.body.innerHTML)
-    await writeFile(resolve(reportsDirectory, `${this.currentTest.title}.html`), `<html><head></head><body>${html}</body></html>`, "utf8")
-    await writeFile(resolve(reportsDirectory, `${this.currentTest.title}.log`), this.currentTest.messages.join("\n"), "utf8")
+    await writeFile(resolve(reportsDirectory, this.currentTest.title, "index.html"), `<html><head></head><body>${html}</body></html>`, "utf8")
+    await writeFile(resolve(reportsDirectory, this.currentTest.title, "log"), this.currentTest.messages.join("\n"), "utf8")
 })
 
 after(async () => {

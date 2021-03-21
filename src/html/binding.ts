@@ -17,184 +17,328 @@
  */
 
 import { moveAllChildren } from "../dom"
-import { isElementUpdate, updateElement, UpdateTarget } from "../update"
+import { ElementUpdate, isElementUpdate, updateElement } from "../update"
 import { EventRegistry } from "./eventregistry"
+import { extractPlaceholderId, isPlaceholder, splitAtPlaceholders } from "./placeholder"
 
+/**
+ * An error thrown in case an `Insert` discovers some inconsistency in the
+ * DOM. This situation most commonly arises, when a template has been rendered
+ * into an element but the rendered content is modified by some external DOM
+ * operations when applying the insert.
+ */
+export const DomInconsistencyError = `DOM inconsistency error`
+
+/**
+ * A `Binding` defines how to apply a placeholder's value to the DOM.
+ */
 export interface Binding {
-    applyBinding(root: UpdateTarget, data: any[]): void
+    /**
+     * Applies this binding to the given `node` with traversal index
+     * of `nodeIndex`. 
+     * 
+     * Every implementation is responsible for checking whether it
+     * is bound for that given node or not.
+     * 
+     * @param node the node to apply a binding to
+     * @param nodeIndex the node's traversal index
+     * @param data all placeholder values
+     * @param previousBinding optional binding produced by the same insert in a previous insert application for the given node
+     */
+    apply(node: Node, nodeIndex: number, data: Array<any>): void
 }
 
-export class ElementSelector {
-    static root(): ElementSelector {
-        return new ElementSelector()
-    }
+/**
+ * Base class for implementing `Binding`s that handle a single data index.
+ */
+abstract class BindingBase implements Binding {
+    constructor (protected readonly nodeIndex: number, protected readonly dataIndex: number) {}
 
-    static build(target: Node, root: Node): ElementSelector {
-        const parts = []
-
-        while (target) {
-            if (target === root) {
-                break
-            }
-            parts.push(`${target.nodeName.toLowerCase()}:nth-of-type(${ElementSelector.countPreviousSiblingsOfSameType(target) + 1})`)
-            target = target.parentNode
+    // Base implementation which handes nodeIndex check and data changed check.
+    // Calls doApply in case an update is needed
+    apply(node: Node, nodeIndex: number, data: Array<any>): void {
+        if (nodeIndex !== this.nodeIndex) {
+            return
         }
 
-        return new ElementSelector(parts.reverse().join(">"))
+        // if (data[this.dataIndex] === previousBinding?.data) {
+        //     return
+        // }
+
+        this.doApply(node, nodeIndex, data[this.dataIndex])
     }
 
-    private static countPreviousSiblingsOfSameType(node: Node): number {
-        let count = 0
-        let sibling = node.previousSibling
-        while (sibling) {
-            if (sibling.nodeName === node.nodeName) {
-                count++
-            }
-            sibling = sibling.previousSibling
-        }
-
-        return count
-    }
-
-    constructor(private readonly selector?: string) { }
-
-    resolve(root: UpdateTarget): Node {
-        if (!this.selector) {
-            return root
-        }
-        return root.querySelector(this.selector)
-    }
-
-    toString(): string {
-        return this.selector ?? ""
-    }
+    /**
+     * Applies the data. No further "is needed" checks are required as this method is 
+     * only called, if nodeIndex matches and data has changed (or there is no previous)
+     * data.
+     * 
+     * @param node the node
+     * @param nodeIndex the node index
+     * @param data the actual data
+     */
+    protected abstract doApply(node: Node, nodeIndex: number, data: unknown): void
 }
 
-export const ElementNotFound = "element not found"
-
-export class CommentNodeBinding implements Binding {
-    constructor(private location: ElementSelector, private index: number) { }
-
-    applyBinding(root: UpdateTarget, data: any[]): void {
-        const [insertPoint, startComment, endComment] = this.findNode(root)
-
-        const nodesToRemove: Array<Node> = []
-        let startSeen = false
-        for (let child of Array.from(insertPoint.childNodes)) {
-            if (child === startComment) {
-                startSeen = true
-            } else if (child === endComment) {
-                break
-            } else if (startSeen) {
-                nodesToRemove.push(child)
-            }
-        }
-        nodesToRemove.forEach(insertPoint.removeChild.bind(insertPoint))
-
-        const d = data[this.index]
-        let dataArray: any[]
-
-        if (Array.isArray(d)) {
-            dataArray = d
+/**
+ * An implementation of `Insert` which modifies `Node`s in the DOM.
+ * Modifications can be constrained to a single `TextNode` or they
+ * can include whole subtrees.
+ */
+class NodeBinding extends BindingBase {
+    protected doApply(node: Node, nodeIndex: number, dataItem: unknown): void {
+        // if (isIterable(dataItem)) {
+        //     this.applyIterable(node, dataItem, previousDataItem)
+        // } else if (isElementUpdate(dataItem)) {
+        if (isElementUpdate(dataItem)) {
+            this.applyElementUpdate(node, dataItem)
         } else {
-            dataArray = [d]
+            this.applyText(node, String(dataItem))
         }
-
-        dataArray.forEach(d => {
-            if (isElementUpdate(d)) {
-                const tpl = document.createElement("div")
-                updateElement(tpl, d)
-                moveAllChildren(tpl, insertPoint, endComment)
-            } else {
-                insertPoint.insertBefore(document.createTextNode(d), endComment)
-            }
-        })
     }
 
-    private findNode(root: UpdateTarget): [Node, Comment | undefined, Comment | undefined] {
-        let parent = this.location.resolve(root)
+    private applyIterable(node: Node, update: Iterable<unknown>) {
+        if (!isMarker(node)) {
+            // node.parentElement.insertBefore(createMarker(), node)
+            // node.parentElement.removeChild(node)
+        }        
+        for (let u of update) {
+            this.doApply(node, this.nodeIndex, u)
+        }
+    }
 
-        if (parent) {
-            const startCommentText = `{{wecco:${this.index}/start}}`
-            const endCommentText = `{{wecco:${this.index}/end}}`
-            let startComment: Comment | undefined = undefined
-            let endComment: Comment | undefined = undefined
+    private applyElementUpdate(node: Node, update: ElementUpdate) {
+        // Apply the update to sideboard template element, then move
+        // all nodes before node.
+        // Finally remove node, as it is not needed anymore
+        const tpl = document.createElement("template") as HTMLTemplateElement
+        updateElement(tpl.content, update, false)
+        moveAllChildren(tpl.content, node.parentNode, node)
+        node.parentNode.removeChild(node)
+    }
 
-            for (let child of Array.from(parent.childNodes)) {
-                if (child instanceof Comment) {
-                    if (child.data === startCommentText) {
-                        startComment = child
-                    } else if (child.data === endCommentText) {
-                        endComment = child
-                    }
+    private applyText(node: Node, text: string) {
+        if (isMarker(node)) {
+            node.parentNode.insertBefore(document.createTextNode(text), node)
+            return
+        }
 
-                    if ((typeof startComment !== "undefined") && (typeof endComment !== "undefined")) {
-                        return [parent, startComment, endComment]
-                    }
+        if (node.nodeType === Node.TEXT_NODE) {
+            (node as Text).data = text
+            return
+        }
+
+        console.error(`Expected ${node} to be of type Text`)
+        throw DomInconsistencyError
+    }
+}
+
+/**
+ * An implementation of `Binding` which modifies a single attribute of a DOM `Element`.
+ */
+class AttributeBinding implements Binding {
+    constructor(private readonly nodeIndex: number, private readonly attributeName: string, private readonly valueInstructions: Array<string | number>) { }
+
+    apply(node: Node, nodeIndex: number, data: Array<any>): void {
+        if (nodeIndex !== this.nodeIndex) {
+            return
+        }
+
+        if (node.nodeType !== Node.ELEMENT_NODE) {
+            console.error(`Expected element to set attribute ${this.attributeName} but got ${node}`)
+            throw DomInconsistencyError
+        }
+
+        (node as Element).setAttribute(this.attributeName, this.valueInstructions.map(vi => (typeof vi === "string") ? vi : data[vi]).join(""))
+    }
+}
+
+/**
+ * An implementation of `Binding` which handles the special boolean attributes, that are prefixed with `?`.
+ */
+class BooleanAttributeBinding extends BindingBase {
+    constructor(nodeIndex: number, private readonly attributeName: string, dataIndex: number) { 
+        super(nodeIndex, dataIndex)
+    }
+
+    doApply(node: Node, nodeIndex: number, dataItem: unknown): void {
+        if (node.nodeType !== Node.ELEMENT_NODE) {
+            console.error(`Expected element to set attribute ${this.attributeName} but got ${node}`)
+            throw DomInconsistencyError
+        }
+
+        if (!!dataItem) {
+            (node as Element).setAttribute(this.attributeName, this.attributeName)
+        } else {
+            (node as Element).removeAttribute(this.attributeName)
+        }
+    }
+}
+
+/**
+ * An implemenation of `Binding` which attaches eventlisteners to nodes.
+ */
+class EventListenerAttributeBinding extends BindingBase {
+    constructor(nodeIndex: number, private readonly eventName: string, dataIndex: number) { 
+        super(nodeIndex, dataIndex)
+    }
+
+    doApply(node: Node, nodeIndex: number, dataItem: unknown): void {
+        if (node.nodeType !== Node.ELEMENT_NODE) {
+            console.error(`Expected element to add event listener ${this.eventName} but got ${node}`)
+            throw DomInconsistencyError
+        }
+
+        const listener = dataItem
+        if (typeof listener !== "function") {
+            console.error(`Cannot add ${listener} as event listener for ${this.eventName} to ${node}`)
+        }
+
+        EventRegistry.instance.removeAllEventListeners(node, this.eventName)
+        EventRegistry.instance.addEventListener(node, this.eventName, listener)
+    }
+}
+
+/**
+ * Applies a set of `Binding`s to a DOM subtree rooted at `root` with the values provided as `data`.
+ * @param root the root of the DOM subtree to apply bindings to
+ * @param bindings the bindings to apply
+ * @param data the data array
+ * @param previousData the data array from the previous update cycle if the same set of inserts - if any
+ */
+export function applyBindings(root: Node, bindings: Array<Binding>, data: Array<any>) {
+    const treeWalker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT | NodeFilter.SHOW_TEXT, null)
+
+    let nodeIndex = -1
+    let node: Node
+
+    while (node = treeWalker.nextNode()) {
+        nodeIndex++
+        bindings.forEach(b => b.apply(node, nodeIndex, data))
+    }
+}
+
+export function determineBindings(root: Node): Array<Binding> {
+    const bindings: Array<Binding> = []
+    const treeWalker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT | NodeFilter.SHOW_TEXT, null)
+    let nodeIndex = -1
+    let node: Node
+
+    while (node = treeWalker.nextNode()) {
+        // Walk the whole DOM subtree and detect nodes with a binding marker on it.
+        // Use the nodeIndex as a pointer to this node
+        nodeIndex++
+
+        if (node.nodeType === Node.TEXT_NODE) {
+            const textNode = node as Text
+            const parts = splitAtPlaceholders(textNode.data)
+
+            if (parts.length === 1) {
+                if (isPlaceholder(parts[0])) {
+                    // Text is a single marker. Use this node to later receive the value.
+                    bindings.push(new NodeBinding(nodeIndex, extractPlaceholderId(parts[0])))
                 }
+                // If the string does not start with the marker its a bare static text
+                // and there is no need to create a binding.
+                continue
+            }
+
+            // The text consists of multiple markers. We need to split the node's original
+            // text and add comments for each marker
+            parts.forEach(part => {
+                if (isPlaceholder(part)) {
+                    // Its a marker. Insert a comment node and use this as the binding's
+                    // target.
+                    textNode.parentNode.insertBefore(createMarker(), textNode)
+                    bindings.push(new NodeBinding(nodeIndex, extractPlaceholderId(part)))
+                    nodeIndex++
+                    return
+                }
+
+                // We have some static text. Insert a text node.
+                textNode.parentNode.insertBefore(document.createTextNode(part), textNode)
+                nodeIndex++
+            })
+
+            // Finally, remove the original node
+            textNode.parentNode.removeChild(textNode)
+            nodeIndex--
+
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+            const element = node as Element
+            for (let name of element.getAttributeNames()) {
+                const value = element.getAttribute(name)
+                const parts = splitAtPlaceholders(value)
+
+                if (name.startsWith("?")) {
+                    // A ? starts a boolean attribute: one, that is either present or not.
+                    // A boolean attribute must use a single marker as its value as the value
+                    // is only used via javascript.
+                    // Otherwise it is considered a syntax error. In any case
+                    // the attribute is removed from the element as it is
+                    // syntactically not correct.
+                    element.removeAttribute(name)
+
+                    if (parts.length !== 1 || !isPlaceholder(parts[0])) {
+                        console.error(`Got syntax error using boolean attribute ${name}: Only single placeholder is allowed as value. Found at ${element}.`)
+                        continue
+                    }
+
+                    bindings.push(new BooleanAttributeBinding(nodeIndex, name.substr(1), extractPlaceholderId(parts[0])))
+                    continue
+                }
+
+                if (name.startsWith("@")) {
+                    // A @ starts an event listener.
+                    // An event listener must use a single marker as its value as the value
+                    // is only used via javascript.
+                    // Otherwise it is considered a syntax error. In any case
+                    // the attribute is removed from the element as it is
+                    // syntactically not correct.
+                    element.removeAttribute(name)
+
+                    if (parts.length !== 1 || !isPlaceholder(parts[0])) {
+                        console.error(`Got syntax error using event listener ${name}: Only single placeholder is allowed as value. Found at ${element}.`)
+                        continue
+                    }
+
+                    bindings.push(new EventListenerAttributeBinding(nodeIndex, name.substr(1), extractPlaceholderId(parts[0])))
+                    continue
+                }
+
+                if (parts.length === 1 && !isPlaceholder(parts[0])) {
+                    // The single value part contains no marker. Nothing to do.
+                    continue
+                }
+
+                const valueInstructions: Array<string | number> = parts.map(part => {
+                    if (isPlaceholder(part)) {
+                        return extractPlaceholderId(part)
+                    }
+                    return part
+                })
+
+                bindings.push(new AttributeBinding(nodeIndex, name, valueInstructions))
             }
         }
-
-        console.warn(`No such element with selector "${this.location}" nested under `, root)
-
-        throw ElementNotFound
     }
+
+    return bindings
 }
 
-export class AttributeBinding implements Binding {
-    constructor(private attributeName: string, private location: ElementSelector, private dataIndex: number) { }
+/**
+ * Creates a marker Node to insert into the DOM.
+ * @returns a marker node
+ */
+function createMarker(): Node {
+    return document.createComment("")
+}
 
-    applyBinding(root: UpdateTarget, data: any[]): void {
-        const node = this.location.resolve(root)
+function isMarker(node: Node): boolean {
+    return node.nodeType === Node.COMMENT_NODE && node.nodeValue === ""
+}
 
-        if (!(node instanceof Element)) {
-            console.warn(`No such element with selector "${this.location}" nested under `, root)
-            throw ElementNotFound
-        }
-
-        const element = node as Element
-
-        if (this.attributeName.startsWith("@")) {
-            // If this is the first time this binding is applied, remove the @... attribute
-            // from the DOM.
-            element.removeAttribute(this.attributeName)
-
-            const eventName = this.attributeName.substr(1)
-
-            EventRegistry.instance.removeAllEventListeners(element, eventName)
-
-            let callback: any
-            if (eventName === "mount") {
-                // The "mount" event is special to HtmlTemplates. It allows a listener to 
-                // work on the actual DOM element, once it has been mounted. Thus, we 
-                // bind the supplied listener to receive the element.
-                callback = data[this.dataIndex].bind(null, element)
-            } else {
-                callback = data[this.dataIndex]
-            }
-            EventRegistry.instance.addEventListener(element, eventName, callback)
-            return
-        }
-
-        if (this.attributeName.startsWith("?")) {
-            element.removeAttribute(this.attributeName)
-            if (data[this.dataIndex]) {
-                const name = this.attributeName.substr(1)
-                element.setAttribute(name, name)
-            }
-
-            return
-        }
-
-        let valueFromData = data[this.dataIndex] ?? ""
-
-        let value = element.getAttribute(this.attributeName)
-        value = value.replace(`{{wecco:${this.dataIndex}}}`, valueFromData)
-
-        if (this.attributeName === "value" && element instanceof HTMLTextAreaElement) {
-            element.innerText = value
-        } else {
-            element.setAttribute(this.attributeName, value)
-        }
-    }
+function isIterable (value: unknown): value is Iterable<unknown> {
+    return Array.isArray(value) ||
+        !!(value && (value as any)[Symbol.iterator])
 }

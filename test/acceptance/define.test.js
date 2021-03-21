@@ -139,9 +139,9 @@ describe("define", () => {
             expect(text).toBe("You clicked me 1 times.")
         })
     
-        it("should invoke @mount eventlistener after component has been mounted", async () => {
+        it("should invoke @update eventlistener after component has been updated", async () => {
             await fixture.page.evaluate(() => {
-                wecco.define("my-component", () => wecco.html`<span @mount=${self => self.innerText = "foo"}>bar</span>`)
+                wecco.define("my-component", () => wecco.html`<span @update=${e => e.target.innerText = "foo"}>bar</span>`)
                 document.querySelector("#app").innerHTML = "<my-component></my-component>"
             })
             await sleep()
@@ -150,10 +150,10 @@ describe("define", () => {
             expect(text).toBe("foo")
         })
     
-        it("should invoke @mount eventlistener after component has been updated", async () => {
+        it("should invoke @update eventlistener after component has been updated", async () => {
             await fixture.page.evaluate(() => {
                 window.mountCalled = 0
-                const c = wecco.define("my-component", (data) => wecco.html`<span @mount=${() => window.mountCalled++}>${data.message}</span>`)
+                const c = wecco.define("my-component", (data) => wecco.html`<span @update=${() => window.mountCalled++}>${data.message}</span>`)
                 const e = c({ message: "hello" })
                 e.mount("#app")
                 e.setData({ message: "world" })
@@ -163,9 +163,9 @@ describe("define", () => {
             expect(await fixture.page.evaluate(() => window.mountCalled)).toBe(2)
         })
     
-        it("should invoke @mount eventlistener after nested component has been mounted", async () => {
+        it("should invoke @update eventlistener after nested component has been updated", async () => {
             await fixture.page.evaluate(() => {
-                wecco.define("my-component", () => wecco.html`<div><span @mount=${self => self.innerText = "foo"}>bar</span></div>`)
+                wecco.define("my-component", () => wecco.html`<div><span @update=${e => e.target.innerText = "foo"}>bar</span></div>`)
                 document.querySelector("#app").innerHTML = "<my-component></my-component>"
             })
             await sleep()
@@ -174,32 +174,32 @@ describe("define", () => {
             expect(text).toBe("foo")
         })
        
-        it("should invoke @mount for a custom element only once per mounting cycle", async () => {
+        it("should invoke @update for a custom element only once per update cycle", async () => {
             await fixture.page.evaluate(() => {
-                window.mountCounter = 0;
+                window.updateCounter = 0;
                 const comp = wecco.define("test-component", () => {
-                    const onMount = () => {
-                        window.mountCounter++
+                    const onUpdate = () => {
+                        window.updateCounter++
                     }
-                    return wecco.html`<h1 @mount=${onMount}>test-component</h1>`
+                    return wecco.html`<h1 @update=${onUpdate}>test-component</h1>`
                 })
     
-                wecco.updateElement(document.querySelector("#app"), comp())
+                wecco.updateElement("#app", comp())
             })
             await sleep()
     
-            const count = await fixture.page.evaluate(() => window.mountCounter)
+            const count = await fixture.page.evaluate(() => window.updateCounter)
             expect(count).toBe(1)
         })
     
-        it("should invoke @mount for a custom element wrapped in html tagged string only once per mounting cycle", async () => {
+        it("should invoke @update for a custom element wrapped in html tagged string only once per mounting cycle", async () => {
             await fixture.page.evaluate(() => {
                 window.mountCounter = 0;
                 const comp = wecco.define("test-component", () => {
                     const onMount = () => {
                         window.mountCounter++
                     }
-                    return wecco.html`<h1 @mount=${onMount}>test-component</h1>`
+                    return wecco.html`<h1 @update=${onMount}>test-component</h1>`
                 })
     
                 wecco.updateElement(document.querySelector("#app"), wecco.html`<div>${comp()}</div>`)

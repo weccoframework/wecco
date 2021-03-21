@@ -33,7 +33,7 @@ export function shadow(content: DoWithShadowCallback | ElementUpdate): ElementUp
         if (typeof content === "function") {
             content.call(null, shadow)
         } else {
-            updateElement(shadow.getRootNode() as Element, content)
+            updateElement(shadow.getRootNode() as Element, content, false)
         }
     }
 }

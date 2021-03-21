@@ -50,7 +50,7 @@ describe("updateElement", () => {
         await sleep()
 
         const text = await fixture.page.$eval("#app", e => e.innerHTML)
-        expect(text).toMatch(/^<p data-wecco-id="\d"><!--{{wecco:0\/start}}-->hello, world<!--{{wecco:0\/end}}--><\/p><!--{{wecco:1\/start}}-->dude<!--{{wecco:1\/end}}-->$/)
+        expect(text).toBe(`<p>hello, world</p>dude`)
     })
 
     it("should render array of static and dynamic text using tagged text", async () => {
@@ -61,60 +61,59 @@ describe("updateElement", () => {
         await sleep()
 
         let text = await fixture.page.$eval("#app", e => e.innerHTML)
-        expect(text).toBe(`<p data-wecco-id="0"><!--{{wecco:0/start}}-->hello, world<!--{{wecco:0/end}}--></p>hello, world again`)
+        expect(text).toBe(`<p>hello, world</p>hello, world again`)
     })
 
-    describe("mount event", () => {
-        it("should invoke @mount only once per mounting cycle", async () => {
+    describe("update event", () => {
+        it("should invoke @update only once per update cycle", async () => {
             await fixture.page.evaluate(() => {
-                window.mountCounter = 0;
+                window.updateCounter = 0;
                 const comp = () => {
                     const onMount = () => {
-                        window.mountCounter++;
+                        window.updateCounter++;
                     };
-                    return wecco.html`<h1 @mount=${onMount}>test-component</h1>`;
+                    return wecco.html`<h1 @update=${onMount}>test-component</h1>`;
                 };
 
                 wecco.updateElement(document.querySelector("#app"), wecco.html`${comp()}`);
             })
             await sleep()
 
-            const count = await fixture.page.evaluate(() => window.mountCounter)
+            const count = await fixture.page.evaluate(() => window.updateCounter)
             expect(count).toBe(1)
         })
 
-        it("should invoke @mount for nested html template", async () => {
+        it("should invoke @update for nested html template", async () => {
             await fixture.page.evaluate(() => {
-                window.mountCalled = 0
-                wecco.updateElement("#app", wecco.html`<div>${wecco.html`<span @mount=${() => { window.mountCalled++ }}></span>`}</div>`)
+                window.updateCalled = 0
+                wecco.updateElement("#app", wecco.html`<div>${wecco.html`<span @update=${() => { window.updateCalled++ }}></span>`}</div>`)
             })
             await sleep()
 
-            const mountCalled = await fixture.page.evaluate(() => window.mountCalled)
-            expect(mountCalled).toBe(1)
+            const updateCalled = await fixture.page.evaluate(() => window.updateCalled)
+            expect(updateCalled).toBe(1)
         })
 
-        it("should invoke @mount for deeply nested html template", async () => {
+        it("should invoke @update for deeply nested html template", async () => {
             await fixture.page.evaluate(() => {
-                window.mountCalled = 0
-                wecco.updateElement("#app", wecco.html`<div>${wecco.html`<div>${wecco.html`<span @mount=${() => { window.mountCalled++ }}></span>`}</div>`}</div>`)
+                window.updateCalled = 0
+                wecco.updateElement("#app", wecco.html`<div>${wecco.html`<div>${wecco.html`<span @update=${() => { window.updateCalled++ }}></span>`}</div>`}</div>`)
             })
             await sleep()
 
-            const mountCalled = await fixture.page.evaluate(() => window.mountCalled)
-            expect(mountCalled).toBe(1)
+            const updateCalled = await fixture.page.evaluate(() => window.updateCalled)
+            expect(updateCalled).toBe(1)
         })
     })
 
     describe("template reuse", () => {
-        it("render should only re-render changed elements", async () => {
+        it.skip("render should only re-render changed elements", async () => {
             await fixture.page.evaluate(() => {
                 document.test = {}
                 document.test.app = document.body.querySelector("#app")
+
                 document.test.renderText = text => {
-                    wecco.updateElement(document.test.app, wecco.html`<div>
-    <p>${text}</p>
-</div>`)
+                    wecco.updateElement(document.test.app, wecco.html`<div><p>${text}</p></div>`)
                 }
                 document.test.renderText("foo")
                 document.test.app.querySelector("div").setAttribute("data-test-marker", "1")

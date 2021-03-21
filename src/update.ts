@@ -54,7 +54,8 @@ export interface ElementUpdater {
 export type ElementUpdate = string | Element | ElementUpdateFunction | ElementUpdater | Array<ElementUpdate>
 
 /**
- * `isElementUpdate` is a type guard that checks whether the given argument is an `ElementUpdate`. 
+ * `isElementUpdate` is a type guard that checks whether the given argument is an `ElementUpdate`.
+ * Note that this function does not check the value for being a `string`. 
  * @param arg the argument to check
  */
 export function isElementUpdate(arg: any): arg is ElementUpdate {
@@ -65,12 +66,62 @@ export function isElementUpdate(arg: any): arg is ElementUpdate {
  * `updateElement` applies the given update request to the given target.
  * @param target the target to update
  * @param request the request
+ * @param notifyUpdated whether to send an update event after the element update
  */
-export function updateElement(target: UpdateTarget | ElementSelector, request: ElementUpdate | string): void {
+export function updateElement(target: UpdateTarget | ElementSelector, request: ElementUpdate, notifyUpdated?: boolean): void {
+    notifyUpdated = notifyUpdated ?? true
+    
     const targetElement = typeof target === "string"
         ? resolve(target)
         : target
 
+    // Execute the update. Never let a downstream updater
+    // send an update notification.
+    executeElementUpdate(targetElement, request)
+
+    // If this call is the root of the update cycle, send
+    // the update notification.
+    if (notifyUpdated) {
+        sendUpdateEvent(targetElement)
+    }
+}
+
+/**
+ * Dispatches an `update` event for every node found under `targetElement`.
+ * The update event is a `CustomEvent` with type `"update"` that does
+ * not bubble.
+ * @param targetElement the root of the update
+ */
+function sendUpdateEvent(targetElement: UpdateTarget): void { 
+    const treeWalker = document.createTreeWalker(targetElement, NodeFilter.SHOW_ELEMENT, new CustomElementFilter())
+    let e: Node
+    
+    while (e = treeWalker.nextNode()) {        
+        (e as EventTarget).dispatchEvent(new CustomEvent("update", {
+            // Don't let the event bubble up the DOM. An individual event
+            // will be dispatched for every element that is part of the
+            // update.
+            bubbles: false,
+        }))
+    }
+}
+
+class CustomElementFilter implements NodeFilter {
+    acceptNode(node: Node): number {
+        if (node.nodeType === Node.ELEMENT_NODE && node.nodeName.indexOf("-") >= 0) {
+            // Reject custom elements which means to skip both the element itself
+            // as well as the element's children.
+            // We skip WeccoElement here as they have their own render lifecycle
+            // and update events for nested elements will be send from the
+            // element's update.
+            return NodeFilter.FILTER_REJECT
+        }
+
+        return NodeFilter.FILTER_ACCEPT
+    }
+}
+
+function executeElementUpdate(targetElement: UpdateTarget, request: ElementUpdate): void {
     if (Array.isArray(request)) {
         // An array of requests. Apply one at a time to a sideboard `div`
         // and move the resulting elements under target.

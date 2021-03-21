@@ -15,6 +15,8 @@ function update(model: Model, message: Message): Model {
 }
 
 function view (model: Model, context: wecco.AppContext<Message>) {
+    console.log(model)
+    
     return wecco.html`
     <p>${model.explanation}</p>
     <p>

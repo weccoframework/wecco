@@ -27,7 +27,7 @@ interface Listener {
 export class EventRegistry {
     static readonly instance = new EventRegistry()
 
-    private registeredListeners = new Map<EventTarget, Array<Listener>>()
+    private registeredListeners = new WeakMap<EventTarget, Array<Listener>>()
 
     addEventListener(target: EventTarget, type: EventType, callback: EventCallback) {
         target.addEventListener(type, callback)

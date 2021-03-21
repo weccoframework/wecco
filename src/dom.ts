@@ -43,8 +43,20 @@ export function resolve(selector: ElementSelector, parent?: Element): Element {
  * @param node the node to remove children from
  */
 export function removeAllChildren(node: Node) {
-    while (node.firstChild) {
-        node.removeChild(node.firstChild)
+    removeNodes(node.firstChild)
+}
+
+/**
+ * Removes nodes starting at `start` (inclusive)
+ * up to `end` (exclusive)
+ * @param start the first node to remove
+ * @param end the first node not to remove
+ */
+export function removeNodes(start: Node, end?: Node) {
+    while (start && start !== end) {
+        let s = start
+        start = start.nextSibling
+        s.parentElement.removeChild(s)
     }
 }
 
