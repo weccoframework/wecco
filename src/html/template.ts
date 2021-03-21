@@ -51,6 +51,7 @@ export class HtmlTemplate implements ElementUpdater {
     static fromTemplateString(strings: TemplateStringsArray, args: any[]): HtmlTemplate {
         const templateString = generateHtml(strings)
         const templateElement = HtmlTemplate.createTemplateElement(templateString)
+
         return new HtmlTemplate(templateString, args, templateElement, determineBindings(templateElement.content))
     }
 
@@ -72,22 +73,22 @@ export class HtmlTemplate implements ElementUpdater {
     }
 
     updateElement(host: UpdateTarget) {
-        if (elementTemplateMap.has(host)) {
-            const tpl = elementTemplateMap.get(host)                    
+        // if (elementTemplateMap.has(host)) {
+        //     const tpl = elementTemplateMap.get(host)                    
             
-            if (tpl.templateElement === this.templateElement) {
-                applyBindings(host, this.bindings, this.data)
-                elementTemplateMap.set(host, this)
+        //     if (tpl.templateElement === this.templateElement) {
+        //         applyBindings(host, this.bindings, this.data)
+        //         elementTemplateMap.set(host, this)
         
-                return
-            }
-        }        
+        //         return
+        //     }
+        // }        
 
         removeAllChildren(host)
         moveAllChildren(this.templateElement.content.cloneNode(true), host)
         applyBindings(host, this.bindings, this.data)
         
-        elementTemplateMap.set(host, this)
+        // elementTemplateMap.set(host, this)
     }
 }
 
@@ -101,13 +102,12 @@ function generateHtml(strings: TemplateStringsArray) {
     strings.forEach((s, i) => {
         html += s
         if (i < strings.length - 1) {
-            // TODO: Simplify
             if (PlaceholderAttributeRegex.test(html) || PlaceholderSingleQuotedAttributeRegex.test(html) || PlaceholderDoubleQuotedAttributeRegex.test(html)) {
                 // Placeholder is used as an attribute value. Insert placeholder
                 html += generatePlaceholder(i)
             } else {
                 // Placeholder is used as text content. Insert a comment node
-                html += generatePlaceholder(i)
+                html += `<!--${generatePlaceholder(i)}-->`
             }
         }
     })

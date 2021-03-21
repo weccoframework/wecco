@@ -50,7 +50,7 @@ describe("updateElement", () => {
         await sleep()
 
         const text = await fixture.page.$eval("#app", e => e.innerHTML)
-        expect(text).toBe(`<p>hello, world</p>dude`)
+        expect(text).toBe(`<p>hello, world<!----></p>dude<!---->`)
     })
 
     it("should render array of static and dynamic text using tagged text", async () => {
@@ -61,7 +61,7 @@ describe("updateElement", () => {
         await sleep()
 
         let text = await fixture.page.$eval("#app", e => e.innerHTML)
-        expect(text).toBe(`<p>hello, world</p>hello, world again`)
+        expect(text).toBe(`<p>hello, world<!----></p>hello, world again`)
     })
 
     describe("update event", () => {

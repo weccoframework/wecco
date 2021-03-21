@@ -35,7 +35,7 @@ describe("html.ts", async () => {
         it("should create html w/ placeholder filling innerText", () => {
             updateElement(document.body, html`<p>${"hello, world!"}</p>`)
 
-            expect(document.body.innerHTML).toBe("<p>hello, world!</p>")
+            expect(document.body.innerHTML).toBe("<p>hello, world!<!----></p>")
         })
 
         it("should create html w/ placeholder surrounded by static text", () => {
@@ -63,7 +63,13 @@ describe("html.ts", async () => {
 
             updateElement(document.body, html`<p>Hello</p>${gretee}`)
 
-            expect(document.body.innerHTML).toBe(`<p>Hello</p>world`)
+            expect(document.body.innerHTML).toBe(`<p>Hello</p>world<!---->`)
+        })
+
+        it("should create html w/ nested and toplevel placeholder", () => {
+            updateElement(document.body, html`<p>${"hello"}</p>${"world"}`)
+
+            expect(document.body.innerHTML).toBe(`<p>hello<!----></p>world<!---->`)
         })
 
         it("should create html w/ multiple adjecent placeholder", () => {

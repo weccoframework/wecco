@@ -119,7 +119,11 @@ class NodeBinding extends BindingBase {
 
     private applyText(node: Node, text: string) {
         if (isMarker(node)) {
-            node.parentNode.insertBefore(document.createTextNode(text), node)
+            // The actual node is a marker node (a comment with the {{wecco:...}} content).
+            // First, simplify the comment by removing the placeholder id, 
+            // then insert a text node directly before the marker comment.
+            (node as Comment).data = ""
+            node.parentElement.insertBefore(document.createTextNode(text), node)            
             return
         }
 
@@ -229,40 +233,46 @@ export function determineBindings(root: Node): Array<Binding> {
         // Use the nodeIndex as a pointer to this node
         nodeIndex++
 
-        if (node.nodeType === Node.TEXT_NODE) {
-            const textNode = node as Text
-            const parts = splitAtPlaceholders(textNode.data)
+        // if (node.nodeType === Node.TEXT_NODE) {
+        //     const textNode = node as Text
+        //     const parts = splitAtPlaceholders(textNode.data)
 
-            if (parts.length === 1) {
-                if (isPlaceholder(parts[0])) {
-                    // Text is a single marker. Use this node to later receive the value.
-                    bindings.push(new NodeBinding(nodeIndex, extractPlaceholderId(parts[0])))
-                }
-                // If the string does not start with the marker its a bare static text
-                // and there is no need to create a binding.
-                continue
+        //     if (parts.length === 1) {
+        //         if (isPlaceholder(parts[0])) {
+        //             // Text is a single marker. Use this node to later receive the value.
+        //             bindings.push(new NodeBinding(nodeIndex, extractPlaceholderId(parts[0])))
+        //         }
+        //         // If the string does not start with the marker its a bare static text
+        //         // and there is no need to create a binding.
+        //         continue
+        //     }
+
+        //     // The text consists of multiple markers. We need to split the node's original
+        //     // text and add comments for each marker
+        //     parts.forEach(part => {
+        //         if (isPlaceholder(part)) {
+        //             // Its a marker. Insert a comment node and use this as the binding's
+        //             // target.
+        //             textNode.parentNode.insertBefore(createMarker(), textNode)
+        //             bindings.push(new NodeBinding(nodeIndex, extractPlaceholderId(part)))
+        //             nodeIndex++
+        //             return
+        //         }
+
+        //         // We have some static text. Insert a text node.
+        //         textNode.parentNode.insertBefore(document.createTextNode(part), textNode)
+        //         nodeIndex++
+        //     })
+
+        //     // Finally, remove the original node
+        //     textNode.parentNode.removeChild(textNode)
+        //     nodeIndex--
+
+        if (node.nodeType === Node.COMMENT_NODE) {
+            const comment = node as Comment
+            if (isPlaceholder(comment.data)) {
+                bindings.push(new NodeBinding(nodeIndex, extractPlaceholderId(comment.data)))
             }
-
-            // The text consists of multiple markers. We need to split the node's original
-            // text and add comments for each marker
-            parts.forEach(part => {
-                if (isPlaceholder(part)) {
-                    // Its a marker. Insert a comment node and use this as the binding's
-                    // target.
-                    textNode.parentNode.insertBefore(createMarker(), textNode)
-                    bindings.push(new NodeBinding(nodeIndex, extractPlaceholderId(part)))
-                    nodeIndex++
-                    return
-                }
-
-                // We have some static text. Insert a text node.
-                textNode.parentNode.insertBefore(document.createTextNode(part), textNode)
-                nodeIndex++
-            })
-
-            // Finally, remove the original node
-            textNode.parentNode.removeChild(textNode)
-            nodeIndex--
 
         } else if (node.nodeType === Node.ELEMENT_NODE) {
             const element = node as Element
@@ -335,7 +345,7 @@ function createMarker(): Node {
 }
 
 function isMarker(node: Node): boolean {
-    return node.nodeType === Node.COMMENT_NODE && node.nodeValue === ""
+    return node.nodeType === Node.COMMENT_NODE && isPlaceholder((node as Comment).data)
 }
 
 function isIterable (value: unknown): value is Iterable<unknown> {
