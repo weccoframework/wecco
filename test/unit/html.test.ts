@@ -26,140 +26,152 @@ describe("html.ts", async () => {
     })
 
     describe("html", () => {
-        it("should create html from static literal", () => {
-            updateElement(document.body, html`<p>hello, world!</p>`)
+        describe("primitive values", () => {
+            it("should create html from static literal", () => {
+                updateElement(document.body, html`<p>hello, world!</p>`)
+    
+                expect(document.body.innerHTML).toBe("<p>hello, world!</p>")
+            })
+    
+            it("should create html w/ placeholder filling innerText", () => {
+                updateElement(document.body, html`<p>${"hello, world!"}</p>`)
+    
+                expect(document.body.innerHTML).toBe("<p>hello, world!<!----></p>")
+            })
+    
+            it("should create html w/ placeholder surrounded by static text", () => {
+                updateElement(document.body, html`<p>hello, ${"world"}!</p>`)
+    
+                expect(document.body.innerHTML).toBe("<p>hello, world<!---->!</p>")
+            })
 
-            expect(document.body.innerHTML).toBe("<p>hello, world!</p>")
+            it("should create html w/ toplevel placeholder", () => {
+                const gretee = "world";
+    
+                updateElement(document.body, html`<p>Hello</p>${gretee}`)
+    
+                expect(document.body.innerHTML).toBe(`<p>Hello</p>world<!---->`)
+            })
+    
+            it("should create html w/ nested and toplevel placeholder", () => {
+                updateElement(document.body, html`<p>${"hello"}</p>${"world"}`)
+    
+                expect(document.body.innerHTML).toBe(`<p>hello<!----></p>world<!---->`)
+            })
+    
+            it("should create html w/ multiple adjecent placeholder", () => {
+                const message = "Hello,";
+                const gretee = "world";
+    
+                updateElement(document.body, html`<p>${message} ${gretee}!</p>`)
+    
+                expect(document.body.innerHTML).toBe(`<p>Hello,<!----> world<!---->!</p>`)
+            })
+    
+            it("should create html w/ placeholder for whole attribute value", () => {
+                const classes = "small hero"
+    
+                const template = (html`<p class=${classes}>hello, world!</p>`)
+                updateElement(document.body, template)
+    
+                expect(document.body.innerHTML).toBe(`<p class="small hero">hello, world!</p>`)
+            })
+    
+            it("should create html w/ placeholder as part of attribute value", () => {
+                const classes = "small"
+    
+                const template = (html`<p class="${classes} hero">hello, world!</p>`)
+                updateElement(document.body, template)
+    
+                expect(document.body.innerHTML).toBe(`<p class="small hero">hello, world!</p>`)
+            })
+    
+            it("should create html w/ multiple placeholders as part of attribute value", () => {
+                const classes = "small"
+    
+                const template = (html`<p class="${classes} hero ${"col"}">hello, world!</p>`)
+                updateElement(document.body, template)
+    
+                expect(document.body.innerHTML).toBe(`<p class="small hero col">hello, world!</p>`)
+            })
+    
+            it("should create html w/ boolean attribute placeholder set to false", () => {            
+                updateElement(document.body, html`<a ?disabled=${false}>hello, world!</a>`)
+    
+                expect(document.body.innerHTML).toBe(`<a>hello, world!</a>`)
+            })
+    
+            it("should create html w/ boolean attribute placeholder set to true", () => {            
+                updateElement(document.body, html`<a ?disabled=${true}>hello, world!</a>`)
+    
+                expect(document.body.innerHTML).toBe(`<a disabled="disabled">hello, world!</a>`)
+            })
+    
+            it("should create html w/ event placeholder", () => {
+                let clicked = false
+                const callback = () => { clicked = true }
+    
+                const template = (html`<a @click=${callback}>Hello, world</a>`)
+                updateElement(document.body, template)
+    
+                expect(document.body.innerHTML).toBe(`<a>Hello, world</a>`)
+    
+                document.querySelector("a").dispatchEvent(new MouseEvent("click"))
+                expect(clicked).toBe(true)
+            })
+    
+            it("should create html w/ update placeholder", () => {
+                let element: Element | null = null
+                const callback = (e: CustomEvent) => { element = e.target as Element}
+    
+                const template = (html`<a @update=${callback}>Hello, world</a>`)
+                updateElement(document.body, template)
+    
+                expect(document.body.innerHTML).toBe(`<a>Hello, world</a>`)
+                expect(element.nodeName).toBe("A")
+            })
+    
+            it("should render nested html template and propagate @update event", () => {
+                let updateCalled = false
+                updateElement(document.body, html`<div>${html`<span @update=${() => { updateCalled = true }}></span>`}</div>`)        
+                expect(updateCalled).toBe(true)
+            })
         })
 
-        it("should create html w/ placeholder filling innerText", () => {
-            updateElement(document.body, html`<p>${"hello, world!"}</p>`)
+        describe("iterables", () => {
+            it("should render array of strings as placeholder", () => {
+                updateElement(document.body, html`<ul>${"abc".split("")}</ul>`)
 
-            expect(document.body.innerHTML).toBe("<p>hello, world!<!----></p>")
+                expect(document.body.innerHTML).toBe(`<ul>abc</ul>`)
+            })
+
+            it("should render array of nested templates as placeholder", () => {
+                updateElement(document.body, html`<ul>${"abc".split("").map(s => html`<li>${s}</li>`)}</ul>`)
+
+                expect(document.body.innerHTML).toBe(`<ul><li>a<!----></li><li>b<!----></li><li>c<!----></li></ul>`)
+            })
         })
 
-        it("should create html w/ placeholder surrounded by static text", () => {
-            updateElement(document.body, html`<p>hello, ${"world"}!</p>`)
+        describe("using nested tagged templates", () => {
+            it("should create html w/ placeholder containing nested html", () => {
+                updateElement(document.body, html`<p>${html`<em>hello, world!</em>`}</p>`)
+    
+                expect(document.body.innerHTML).toBe("<p><em>hello, world!</em></p>")
+            })
 
-            expect(document.body.innerHTML).toBe("<p>hello, world<!---->!</p>")
-        })
-
-        it("should create html w/ placeholder containing nested html", () => {
-            updateElement(document.body, html`<p>${html`<em>hello, world!</em>`}</p>`)
-
-            expect(document.body.innerHTML).toBe("<p><em>hello, world!</em></p>")
-        })
-
-        it("should create html w/ placeholder containing nested element", () => {
-            const e = document.createElement("em")
-            e.appendChild(document.createTextNode("hello, world!"))
-            updateElement(document.body, html`<p>${e}</p>`)
-
-            expect(document.body.innerHTML).toBe("<p><em>hello, world!</em></p>")
-        })
-
-        it("should create html w/ toplevel placeholder", () => {
-            const gretee = "world";
-
-            updateElement(document.body, html`<p>Hello</p>${gretee}`)
-
-            expect(document.body.innerHTML).toBe(`<p>Hello</p>world<!---->`)
-        })
-
-        it("should create html w/ nested and toplevel placeholder", () => {
-            updateElement(document.body, html`<p>${"hello"}</p>${"world"}`)
-
-            expect(document.body.innerHTML).toBe(`<p>hello<!----></p>world<!---->`)
-        })
-
-        it("should create html w/ multiple adjecent placeholder", () => {
-            const message = "Hello,";
-            const gretee = "world";
-
-            updateElement(document.body, html`<p>${message} ${gretee}!</p>`)
-
-            expect(document.body.innerHTML).toBe(`<p>Hello,<!----> world<!---->!</p>`)
-        })
-
-        it("should create html w/ placeholder for whole attribute value", () => {
-            const classes = "small hero"
-
-            const template = (html`<p class=${classes}>hello, world!</p>`)
-            updateElement(document.body, template)
-
-            expect(document.body.innerHTML).toBe(`<p class="small hero">hello, world!</p>`)
-        })
-
-        it("should create html w/ placeholder as part of attribute value", () => {
-            const classes = "small"
-
-            const template = (html`<p class="${classes} hero">hello, world!</p>`)
-            updateElement(document.body, template)
-
-            expect(document.body.innerHTML).toBe(`<p class="small hero">hello, world!</p>`)
-        })
-
-        it("should create html w/ multiple placeholders as part of attribute value", () => {
-            const classes = "small"
-
-            const template = (html`<p class="${classes} hero ${"col"}">hello, world!</p>`)
-            updateElement(document.body, template)
-
-            expect(document.body.innerHTML).toBe(`<p class="small hero col">hello, world!</p>`)
-        })
-
-        it("should create html w/ boolean attribute placeholder set to false", () => {            
-            updateElement(document.body, html`<a ?disabled=${false}>hello, world!</a>`)
-
-            expect(document.body.innerHTML).toBe(`<a>hello, world!</a>`)
-        })
-
-        it("should create html w/ boolean attribute placeholder set to true", () => {            
-            updateElement(document.body, html`<a ?disabled=${true}>hello, world!</a>`)
-
-            expect(document.body.innerHTML).toBe(`<a disabled="disabled">hello, world!</a>`)
-        })
-
-        it("should create html w/ event placeholder", () => {
-            let clicked = false
-            const callback = () => { clicked = true }
-
-            const template = (html`<a @click=${callback}>Hello, world</a>`)
-            updateElement(document.body, template)
-
-            expect(document.body.innerHTML).toBe(`<a>Hello, world</a>`)
-
-            document.querySelector("a").dispatchEvent(new MouseEvent("click"))
-            expect(clicked).toBe(true)
-        })
-
-        it("should create html w/ update placeholder", () => {
-            let element: Element | null = null
-            const callback = (e: CustomEvent) => { element = e.target as Element}
-
-            const template = (html`<a @update=${callback}>Hello, world</a>`)
-            updateElement(document.body, template)
-
-            expect(document.body.innerHTML).toBe(`<a>Hello, world</a>`)
-            expect(element.nodeName).toBe("A")
-        })
-
-        it("should render nested html template and propagate @update event", () => {
-            let updateCalled = false
-            updateElement(document.body, html`<div>${html`<span @update=${() => { updateCalled = true }}></span>`}</div>`)        
-            expect(updateCalled).toBe(true)
-        })
-
-        it("should re-render nested html template and propagate @update event", () => {
-            let updateCalled = 0
-
-            updateElement(document.body, html`<div>${html`<span @update=${() => { updateCalled++ }}>hello, ${"world"}!</span>`}</div>`)
-            expect(document.querySelector("span").innerHTML).toBe("hello, world<!---->!")
-            expect(updateCalled).toBe(1)
-            
-            updateElement(document.body, html`<div>${html`<span @update=${() => { updateCalled++ }}>hello, ${"foo"}!</span>`}</div>`)
-            expect(document.querySelector("span").innerHTML).toBe("hello, foo<!---->!")
-            expect(updateCalled).toBe(2)
+            it("should create html w/ placeholder containing nested html and static elements", () => {
+                updateElement(document.body, html`<p>hello, ${html`<em>world!</em>`}</p>`)
+    
+                expect(document.body.innerHTML).toBe("<p>hello, <em>world!</em></p>")
+            })
+    
+            it("should create html w/ placeholder containing nested element", () => {
+                const e = document.createElement("em")
+                e.appendChild(document.createTextNode("hello, world!"))
+                updateElement(document.body, html`<p>${e}</p>`)
+    
+                expect(document.body.innerHTML).toBe("<p><em>hello, world!</em></p>")
+            })
         })
 
         describe("re-rendering of template applied previously", () => {
@@ -230,6 +242,18 @@ describe("html.ts", async () => {
                 expect(document.body.innerHTML).toBe(`<ul><li>a</li><li>b</li><li>c</li></ul>`)
             })
 
+            it("should re-render nested html template and propagate @update event", () => {
+                let updateCalled = 0
+    
+                updateElement(document.body, html`<div>${html`<span @update=${() => { updateCalled++ }}>hello, ${"world"}!</span>`}</div>`)
+                expect(document.querySelector("span").innerHTML).toBe("hello, world<!---->!")
+                expect(updateCalled).toBe(1)
+                
+                updateElement(document.body, html`<div>${html`<span @update=${() => { updateCalled++ }}>hello, ${"foo"}!</span>`}</div>`)
+                expect(document.querySelector("span").innerHTML).toBe("hello, foo<!---->!")
+                expect(updateCalled).toBe(2)
+            })
+    
             it.skip("should re-render nested list template (2)", () => {
                 const tpl = (items: Array<string>) => html`<ul>${items.map(i => html`<li>${i}</li>`)}</ul>`
                 
