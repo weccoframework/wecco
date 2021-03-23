@@ -43,7 +43,6 @@ export interface Binding {
      * @param node the node to apply a binding to
      * @param nodeIndex the node's traversal index
      * @param data all placeholder values
-     * @param previousBinding optional binding produced by the same insert in a previous insert application for the given node
      */
     apply(node: Node, nodeIndex: number, data: Array<any>): void
 }
