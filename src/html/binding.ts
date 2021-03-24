@@ -18,7 +18,6 @@
 
 import { removeNodes } from "../dom"
 import { ElementUpdate, isElementUpdate, updateElement } from "../update"
-import { EventRegistry } from "./eventregistry"
 import { extractPlaceholderId, isPlaceholder, splitAtPlaceholders } from "./placeholder"
 
 /**
@@ -53,20 +52,37 @@ export interface Binding {
      * 
      * @param data all placeholder values
      */
-    applyData(data: Array<any>): void
+    applyData(data: ReadonlyArray<any>): void
 }
 
 /**
- * Base class for implementing `Binding`s that handle a single data index.
+ * Base class for implementing `Binding`s.
+ *
+ * This base implementation handles `bind` as well as parts of
+ * `applyData`.
+ * 
+ * If subclass needs special handling when binding the node,
+ * implement `bindNode` which is called only when a node with
+ * a matching traversal index is called.
  */
 abstract class BindingBase implements Binding {
     protected node: Node
-    protected boundData: any
-    
-    constructor (protected readonly nodeIndex: number) {}
+
+    /**
+     * @param nodeIndex the node's traversal index to watch for
+     */
+    constructor(protected readonly nodeIndex: number) { }
+
 
     // Base implementation which handes nodeIndex check and data changed check.
     // Calls doApply in case an update is needed
+
+    /**
+     * This base implementation performs the node index check and calls `bindNode`
+     * if a matching node is passed.
+     * @param node the node
+     * @param nodeIndex the node's traversal index
+     */
     bind(node: Node, nodeIndex: number): void {
         if (nodeIndex !== this.nodeIndex) {
             return
@@ -74,38 +90,66 @@ abstract class BindingBase implements Binding {
 
         this.bindNode(node)
     }
-    
+
+    /**
+     * Called when `bind` is called with a matching traversal index.
+     * Override this method to implement custom node handling.
+     * @param node the node to bind
+     */
     protected bindNode(node: Node): void {
         this.node = node
     }
 
-    applyData(data: Array<any>): void {
-        if (this.boundData === data) {
-            return
-        }
-
-        this.applyChangedData(data)
-
-        this.boundData = data
-    }
-    
-    protected abstract applyChangedData(data: Array<any>): void
+    abstract applyData(data: ReadonlyArray<any>): void
 }
 
 /**
- * An implementation of `Insert` which modifies `Node`s in the DOM.
- * Modifications can be constrained to a single `TextNode` or they
- * can include whole subtrees.
+ * Base implementation for `Binding`s that handle a single data
+ * index. This implementation provides checks to update the DOM
+ * only when data changes.
  */
-class NodeBinding extends BindingBase {
-    private startMarker: Node | undefined
-    private endMarker: Node | undefined
+abstract class SingleDataIndexBindingBase extends BindingBase {
+    protected boundData: any
 
-    constructor (nodeIndex: number, private readonly dataIndex: number) {
+    constructor(nodeIndex: number, protected readonly dataIndex: number) {
         super(nodeIndex)
     }
 
-    protected bindNode(node: Node): void {        
+    /**
+     * Performs a check if the already bound data is equal to
+     * the passed data. Calls `applyChangedData` to handle
+     * data updates.
+     * @param data the data array
+     */
+    applyData(data: Array<any>): void {
+        const dataItem = data[this.dataIndex]
+
+        if (this.boundData === dataItem) {
+            return
+        }
+
+        this.applyChangedData(dataItem)
+
+        this.boundData = dataItem
+    }
+
+    /**
+     * Called by `applyData` when a change in data is detected.
+     * @param dataItem the single element from the data array selected by data index
+     */
+    protected abstract applyChangedData(dataItem: any): void
+}
+
+/**
+ * An implementation of `Binding` which modifies `Node`s in the DOM.
+ * Modifications can be constrained to a single `TextNode` or they
+ * can include whole subtrees.
+ */
+class NodeBinding extends SingleDataIndexBindingBase {
+    private startMarker: Node | undefined
+    private endMarker: Node | undefined
+
+    protected bindNode(node: Node): void {
         super.bindNode(node);
 
         // Use the node as the end marker.
@@ -119,8 +163,7 @@ class NodeBinding extends BindingBase {
         node.parentElement.insertBefore(this.startMarker, node)
     }
 
-    protected applyChangedData(data: Array<any>): void {
-        const dataItem = data[this.dataIndex]
+    protected applyChangedData(dataItem: any): void {
         // if (isIterable(dataItem)) {
         //     this.applyIterable(node, dataItem, previousDataItem)
         // } else if (isElementUpdate(dataItem)) {
@@ -131,7 +174,7 @@ class NodeBinding extends BindingBase {
         }
     }
 
-    private applyElementUpdate(update: ElementUpdate) {        
+    private applyElementUpdate(update: ElementUpdate) {
         // Remove all nodes between start and end in case a previous render run
         // has created data
         this.clear()
@@ -171,7 +214,7 @@ class NodeBinding extends BindingBase {
         throw DomInconsistencyError
     }
 
-    private clear (): void {
+    private clear(): void {
         const firstNodeToRemove = this.startMarker
             ? this.startMarker.nextSibling
             : this.node.parentElement.firstChild
@@ -186,11 +229,11 @@ class NodeBinding extends BindingBase {
 class AttributeBinding extends BindingBase {
     private element: Element
 
-    constructor(nodeIndex: number, private readonly attributeName: string, private readonly valueInstructions: Array<string | number>) { 
+    constructor(nodeIndex: number, private readonly attributeName: string, private readonly valueInstructions: Array<string | number>) {
         super(nodeIndex)
     }
 
-    protected bindNode (node: Node): void {
+    protected bindNode(node: Node): void {
         if (node.nodeType !== Node.ELEMENT_NODE) {
             console.error(`Expected element to set attribute ${this.attributeName} but got ${node}`)
             throw DomInconsistencyError
@@ -199,7 +242,7 @@ class AttributeBinding extends BindingBase {
         super.bindNode(node)
     }
 
-    protected applyChangedData(data: Array<any>): void {
+    applyData(data: ReadonlyArray<any>): void {
         this.element.setAttribute(this.attributeName, this.valueInstructions.map(vi => (typeof vi === "string") ? vi : data[vi]).join(""))
     }
 }
@@ -207,14 +250,14 @@ class AttributeBinding extends BindingBase {
 /**
  * An implementation of `Binding` which handles the special boolean attributes, that are prefixed with `?`.
  */
-class BooleanAttributeBinding extends BindingBase {
+class BooleanAttributeBinding extends SingleDataIndexBindingBase {
     private element: Element
 
-    constructor(nodeIndex: number, private readonly attributeName: string, private readonly dataIndex: number) {
-        super(nodeIndex)
+    constructor(nodeIndex: number, private readonly attributeName: string, dataIndex: number) {
+        super(nodeIndex, dataIndex)
     }
 
-    protected bindNode (node: Node): void {
+    protected bindNode(node: Node): void {
         if (node.nodeType !== Node.ELEMENT_NODE) {
             console.error(`Expected element to set attribute ${this.attributeName} but got ${node}`)
             throw DomInconsistencyError
@@ -223,8 +266,7 @@ class BooleanAttributeBinding extends BindingBase {
         super.bindNode(node)
     }
 
-    protected applyChangedData(data: Array<any>): void {
-        const dataItem = data[this.dataIndex]
+    protected applyChangedData(dataItem: any): void {
         if (!!dataItem) {
             this.element.setAttribute(this.attributeName, this.attributeName)
         } else {
@@ -236,14 +278,14 @@ class BooleanAttributeBinding extends BindingBase {
 /**
  * An implemenation of `Binding` which attaches eventlisteners to nodes.
  */
-class EventListenerAttributeBinding extends BindingBase {
+class EventListenerAttributeBinding extends SingleDataIndexBindingBase {
     private element: Element
 
-    constructor(nodeIndex: number, private readonly eventName: string, private readonly dataIndex: number) { 
-        super(nodeIndex)
+    constructor(nodeIndex: number, private readonly eventName: string, dataIndex: number) {
+        super(nodeIndex, dataIndex)
     }
 
-    protected bindNode (node: Node): void {
+    protected bindNode(node: Node): void {
         if (node.nodeType !== Node.ELEMENT_NODE) {
             console.error(`Expected element to set attribute ${this.eventName} but got ${node}`)
             throw DomInconsistencyError
@@ -252,15 +294,13 @@ class EventListenerAttributeBinding extends BindingBase {
         super.bindNode(node)
     }
 
-    protected applyChangedData(data: Array<any>): void {
-        const listener = data[this.dataIndex]
-
-        if (typeof listener !== "function") {
-            console.error(`Cannot add ${listener} as event listener for ${this.eventName} to ${this.element}`)
+    protected applyChangedData(dataItem: any): void {
+        if (typeof dataItem !== "function") {
+            console.error(`Cannot add ${dataItem} as event listener for ${this.eventName} to ${this.element}`)
         }
 
-        EventRegistry.instance.removeAllEventListeners(this.element, this.eventName)
-        EventRegistry.instance.addEventListener(this.element, this.eventName, listener)
+        this.element.removeEventListener(this.eventName, this.boundData)
+        this.element.addEventListener(this.eventName, dataItem)
     }
 }
 
@@ -269,7 +309,7 @@ class EventListenerAttributeBinding extends BindingBase {
  * @param bindings the bindings
  * @param data the data
  */
-export function applyData(bindings: Array<Binding>, data: Array<any>): void {
+export function applyData(bindings: ReadonlyArray<Binding>, data: ReadonlyArray<any>): void {
     bindings.forEach(b => b.applyData(data))
 }
 
@@ -278,7 +318,7 @@ export function applyData(bindings: Array<Binding>, data: Array<any>): void {
  * @param bindings the bindings to apply
  * @param root the root of the DOM subtree to apply bindings to
  */
-export function bindBindings(bindings: Array<Binding>, root: Node) {
+export function bindBindings(bindings: ReadonlyArray<Binding>, root: Node) {
     const treeWalker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT | NodeFilter.SHOW_TEXT, null)
 
     let nodeIndex = -1
@@ -428,7 +468,7 @@ function isMarker(node: Node): boolean {
     return comment.data === "" || isPlaceholder(comment.data)
 }
 
-function isIterable (value: unknown): value is Iterable<unknown> {
+function isIterable(value: unknown): value is Iterable<unknown> {
     return Array.isArray(value) ||
         !!(value && (value as any)[Symbol.iterator])
 }

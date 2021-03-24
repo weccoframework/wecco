@@ -43,42 +43,35 @@ export class HtmlTemplateCache {
 const elementTemplateMap = new WeakMap<UpdateTarget, HtmlTemplate>()
 
 export class HtmlTemplate implements ElementUpdater {
-    private readonly templateString: string
-    private readonly bindings: Array<Binding>
-    private readonly templateElement: HTMLTemplateElement
-    private data: Array<any>
+    private _templateString: string | undefined
+    private _templateElement: HTMLTemplateElement | undefined
+    private bindings: Array<Binding> | undefined
 
-    static fromTemplateString(strings: TemplateStringsArray, args: any[]): HtmlTemplate {
-        const templateString = generateHtml(strings)
-        const templateElement = HtmlTemplate.createTemplateElement(templateString)
+    constructor(private readonly strings: TemplateStringsArray, private data: ReadonlyArray<any>) { }
 
-        return new HtmlTemplate(templateString, args, templateElement, determineBindings(templateElement.content))
+    get templateString(): string {
+        if (typeof this._templateString === "undefined") {
+            this._templateString = generateHtml(this.strings)
+        }
+        return this._templateString
     }
 
-    private static createTemplateElement(templateString: string): HTMLTemplateElement {
-        const tpl = document.createElement("template")
-        tpl.innerHTML = templateString
-        return tpl
-    }
-
-    private constructor(templateString: string, data: any[], templateElement: HTMLTemplateElement, bindings: Array<Binding>) {
-        this.templateString = templateString
-        this.templateElement = templateElement
-        this.bindings = bindings
-        this.data = data
-    }
-
-    clone(args: Array<any>): HtmlTemplate {
-        return new HtmlTemplate(this.templateString, args, this.templateElement, this.bindings)
+    get templateElement(): HTMLTemplateElement {
+        if (typeof this._templateElement === "undefined") {
+            this._templateElement = document.createElement("template")
+            this._templateElement.innerHTML = this.templateString
+            this.bindings = determineBindings(this._templateElement.content)
+        }
+        return this._templateElement
     }
 
     updateElement(host: UpdateTarget) {
         if (elementTemplateMap.has(host)) {
             const tpl = elementTemplateMap.get(host)
             
-            if (tpl.templateElement === this.templateElement) {
-                applyData(tpl.bindings, this.data)
+            if (tpl.strings === this.strings) {
                 tpl.data = this.data
+                applyData(tpl.bindings, this.data)
                 return
             }
         }        

@@ -17,7 +17,7 @@
  */
 
 import { ElementUpdater } from "../update"
-import { HtmlTemplate, HtmlTemplateCache } from "./template"
+import { HtmlTemplate } from "./template"
 
 /**
  * `html` is a string tag to be used with string templates. The tag generates
@@ -27,12 +27,5 @@ import { HtmlTemplate, HtmlTemplateCache } from "./template"
  * @param args the arguments of the template
  */
 export function html(strings: TemplateStringsArray, ...args: any): ElementUpdater {
-    if (HtmlTemplateCache.instance.has(strings)) {
-        return HtmlTemplateCache.instance.get(strings).clone(args)
-    }
-
-    const result = HtmlTemplate.fromTemplateString(strings, args)
-    HtmlTemplateCache.instance.set(strings, result)
-
-    return result
+    return new HtmlTemplate(strings, args)
 }
