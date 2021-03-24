@@ -108,30 +108,15 @@ class NodeBinding extends BindingBase {
     protected bindNode(node: Node): void {        
         super.bindNode(node);
 
+        // Use the node as the end marker.
+        // Simplify the comment for that purpose
         (node as Comment).data = ""
+        this.endMarker = node
 
-        if (node.nextSibling === null) {
-            if (node.previousSibling !== null) {
-                // The marker is the last child of it's parent
-                // but has previous siblings. Use it as the start
-                // marker
-                this.startMarker = node
-            }
-            // Otherwise the marker is the only child of it's parent.
-            // We don't need more markers
-        } else {
-            // The node is followed by other nodes.
-            // So we use it as the end marker
-            this.endMarker = node
-
-            if (node.previousSibling !== null) {
-                // The node also has predecessors.
-                // We create a new marker to use as the start marker
-                // and insert it before the end marker
-                this.startMarker = document.createComment("")
-                node.parentElement.insertBefore(this.startMarker, node)
-            }
-        }        
+        // Create a start marker comment and insert it
+        // directly before the end marker
+        this.startMarker = document.createComment("")
+        node.parentElement.insertBefore(this.startMarker, node)
     }
 
     protected applyChangedData(data: Array<any>): void {
