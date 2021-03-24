@@ -59,14 +59,3 @@ export function removeNodes(start: Node, end?: Node) {
         s.parentElement.removeChild(s)
     }
 }
-
-/**
- * Moves all children from source to target.
- * @param source source element to remove nodes from
- * @param target target element to append nodes to
- */
-export function moveAllChildren(source: Node, target: Node, insertBefore?: Node) {
-    while(source.firstChild) {
-        target.insertBefore(source.removeChild(source.firstChild), insertBefore)
-    }
-}

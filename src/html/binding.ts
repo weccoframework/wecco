@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-import { moveAllChildren } from "../dom"
+import { removeNodes } from "../dom"
 import { ElementUpdate, isElementUpdate, updateElement } from "../update"
 import { EventRegistry } from "./eventregistry"
 import { extractPlaceholderId, isPlaceholder, splitAtPlaceholders } from "./placeholder"
@@ -34,49 +34,62 @@ export const DomInconsistencyError = `DOM inconsistency error`
  */
 export interface Binding {
     /**
-     * Applies this binding to the given `node` with traversal index
-     * of `nodeIndex`. 
+     * Bind this binding to the node given.
+     * Is called once after the template's content has been cloned
+     * when nodes are iterated.
      * 
-     * Every implementation is responsible for checking whether it
-     * is bound for that given node or not.
+     * Implementations are responsible for checking if the node and
+     * traversal index should be handled.
      * 
-     * @param node the node to apply a binding to
-     * @param nodeIndex the node's traversal index
+     * @param node the node
+     * @param nodeIndex the traversal index
+     */
+    bind(node: Node, nodeIndex: number): void
+
+    /**
+     * Applies the given data to the bound node.
+     * 
+     * Called multiple times to update the bound data.s
+     * 
      * @param data all placeholder values
      */
-    apply(node: Node, nodeIndex: number, data: Array<any>): void
+    applyData(data: Array<any>): void
 }
 
 /**
  * Base class for implementing `Binding`s that handle a single data index.
  */
 abstract class BindingBase implements Binding {
-    constructor (protected readonly nodeIndex: number, protected readonly dataIndex: number) {}
+    protected node: Node
+    protected boundData: any
+    
+    constructor (protected readonly nodeIndex: number) {}
 
     // Base implementation which handes nodeIndex check and data changed check.
     // Calls doApply in case an update is needed
-    apply(node: Node, nodeIndex: number, data: Array<any>): void {
+    bind(node: Node, nodeIndex: number): void {
         if (nodeIndex !== this.nodeIndex) {
             return
         }
 
-        // if (data[this.dataIndex] === previousBinding?.data) {
-        //     return
-        // }
-
-        this.doApply(node, nodeIndex, data[this.dataIndex])
+        this.bindNode(node)
+    }
+    
+    protected bindNode(node: Node): void {
+        this.node = node
     }
 
-    /**
-     * Applies the data. No further "is needed" checks are required as this method is 
-     * only called, if nodeIndex matches and data has changed (or there is no previous)
-     * data.
-     * 
-     * @param node the node
-     * @param nodeIndex the node index
-     * @param data the actual data
-     */
-    protected abstract doApply(node: Node, nodeIndex: number, data: unknown): void
+    applyData(data: Array<any>): void {
+        if (this.boundData === data) {
+            return
+        }
+
+        this.applyChangedData(data)
+
+        this.boundData = data
+    }
+    
+    protected abstract applyChangedData(data: Array<any>): void
 }
 
 /**
@@ -85,74 +98,124 @@ abstract class BindingBase implements Binding {
  * can include whole subtrees.
  */
 class NodeBinding extends BindingBase {
-    protected doApply(node: Node, nodeIndex: number, dataItem: unknown): void {
+    private startMarker: Node | undefined
+    private endMarker: Node | undefined
+
+    constructor (nodeIndex: number, private readonly dataIndex: number) {
+        super(nodeIndex)
+    }
+
+    protected bindNode(node: Node): void {        
+        super.bindNode(node);
+
+        (node as Comment).data = ""
+
+        if (node.nextSibling === null) {
+            if (node.previousSibling !== null) {
+                // The marker is the last child of it's parent
+                // but has previous siblings. Use it as the start
+                // marker
+                this.startMarker = node
+            }
+            // Otherwise the marker is the only child of it's parent.
+            // We don't need more markers
+        } else {
+            // The node is followed by other nodes.
+            // So we use it as the end marker
+            this.endMarker = node
+
+            if (node.previousSibling !== null) {
+                // The node also has predecessors.
+                // We create a new marker to use as the start marker
+                // and insert it before the end marker
+                this.startMarker = document.createComment("")
+                node.parentElement.insertBefore(this.startMarker, node)
+            }
+        }        
+    }
+
+    protected applyChangedData(data: Array<any>): void {
+        const dataItem = data[this.dataIndex]
         // if (isIterable(dataItem)) {
         //     this.applyIterable(node, dataItem, previousDataItem)
         // } else if (isElementUpdate(dataItem)) {
         if (isElementUpdate(dataItem)) {
-            this.applyElementUpdate(node, dataItem)
+            this.applyElementUpdate(dataItem)
         } else {
-            this.applyText(node, String(dataItem))
+            this.applyText(String(dataItem))
         }
     }
 
-    private applyIterable(node: Node, update: Iterable<unknown>) {
-        if (!isMarker(node)) {
-            // node.parentElement.insertBefore(createMarker(), node)
-            // node.parentElement.removeChild(node)
-        }        
-        for (let u of update) {
-            this.doApply(node, this.nodeIndex, u)
-        }
-    }
+    private applyElementUpdate(update: ElementUpdate) {        
+        // Remove all nodes between start and end in case a previous render run
+        // has created data
+        this.clear()
 
-    private applyElementUpdate(node: Node, update: ElementUpdate) {
         // Apply the update to sideboard template element, then move
         // all nodes before node.
-        // Finally remove node, as it is not needed anymore
-        const tpl = document.createElement("template") as HTMLTemplateElement
-        updateElement(tpl.content, update, false)
-        moveAllChildren(tpl.content, node.parentNode, node)
-        node.parentNode.removeChild(node)
+        const fragment = document.createDocumentFragment()
+        updateElement(fragment, update, false)
+        this.node.parentElement.insertBefore(fragment, this.node)
     }
 
-    private applyText(node: Node, text: string) {
-        if (isMarker(node)) {
+    private applyText(text: string) {
+        if (isMarker(this.node)) {
             // The actual node is a marker node (a comment with the {{wecco:...}} content).
-            // First, simplify the comment by removing the placeholder id, 
-            // then insert a text node directly before the marker comment.
-            (node as Comment).data = ""
-            node.parentElement.insertBefore(document.createTextNode(text), node)            
+            // Insert a new text node before the marker, remove the marker
+            // and update this node to point to the text node
+
+            const textNode = document.createTextNode(text)
+            this.node.parentElement.insertBefore(textNode, this.endMarker)
+
+            if ((typeof this.startMarker === "undefined") && (typeof this.endMarker === "undefined")) {
+                // If the marker was the only child, remove it as we keep track of the insert point
+                // using the create text node
+                this.node.parentElement.removeChild(this.node)
+            }
+
+            this.node = textNode
             return
         }
 
-        if (node.nodeType === Node.TEXT_NODE) {
-            (node as Text).data = text
+        if (this.node.nodeType === Node.TEXT_NODE) {
+            (this.node as Text).data = text
             return
         }
 
-        console.error(`Expected ${node} to be of type Text`)
+        console.error(`Expected ${this.node} to be of type Text`)
         throw DomInconsistencyError
+    }
+
+    private clear (): void {
+        const firstNodeToRemove = this.startMarker
+            ? this.startMarker.nextSibling
+            : this.node.parentElement.firstChild
+
+        removeNodes(firstNodeToRemove, this.endMarker ?? this.node)
     }
 }
 
 /**
  * An implementation of `Binding` which modifies a single attribute of a DOM `Element`.
  */
-class AttributeBinding implements Binding {
-    constructor(private readonly nodeIndex: number, private readonly attributeName: string, private readonly valueInstructions: Array<string | number>) { }
+class AttributeBinding extends BindingBase {
+    private element: Element
 
-    apply(node: Node, nodeIndex: number, data: Array<any>): void {
-        if (nodeIndex !== this.nodeIndex) {
-            return
-        }
+    constructor(nodeIndex: number, private readonly attributeName: string, private readonly valueInstructions: Array<string | number>) { 
+        super(nodeIndex)
+    }
 
+    protected bindNode (node: Node): void {
         if (node.nodeType !== Node.ELEMENT_NODE) {
             console.error(`Expected element to set attribute ${this.attributeName} but got ${node}`)
             throw DomInconsistencyError
         }
+        this.element = node as Element
+        super.bindNode(node)
+    }
 
-        (node as Element).setAttribute(this.attributeName, this.valueInstructions.map(vi => (typeof vi === "string") ? vi : data[vi]).join(""))
+    protected applyChangedData(data: Array<any>): void {
+        this.element.setAttribute(this.attributeName, this.valueInstructions.map(vi => (typeof vi === "string") ? vi : data[vi]).join(""))
     }
 }
 
@@ -160,20 +223,27 @@ class AttributeBinding implements Binding {
  * An implementation of `Binding` which handles the special boolean attributes, that are prefixed with `?`.
  */
 class BooleanAttributeBinding extends BindingBase {
-    constructor(nodeIndex: number, private readonly attributeName: string, dataIndex: number) { 
-        super(nodeIndex, dataIndex)
+    private element: Element
+
+    constructor(nodeIndex: number, private readonly attributeName: string, private readonly dataIndex: number) {
+        super(nodeIndex)
     }
 
-    doApply(node: Node, nodeIndex: number, dataItem: unknown): void {
+    protected bindNode (node: Node): void {
         if (node.nodeType !== Node.ELEMENT_NODE) {
             console.error(`Expected element to set attribute ${this.attributeName} but got ${node}`)
             throw DomInconsistencyError
         }
+        this.element = node as Element
+        super.bindNode(node)
+    }
 
+    protected applyChangedData(data: Array<any>): void {
+        const dataItem = data[this.dataIndex]
         if (!!dataItem) {
-            (node as Element).setAttribute(this.attributeName, this.attributeName)
+            this.element.setAttribute(this.attributeName, this.attributeName)
         } else {
-            (node as Element).removeAttribute(this.attributeName)
+            this.element.removeAttribute(this.attributeName)
         }
     }
 }
@@ -182,34 +252,48 @@ class BooleanAttributeBinding extends BindingBase {
  * An implemenation of `Binding` which attaches eventlisteners to nodes.
  */
 class EventListenerAttributeBinding extends BindingBase {
-    constructor(nodeIndex: number, private readonly eventName: string, dataIndex: number) { 
-        super(nodeIndex, dataIndex)
+    private element: Element
+
+    constructor(nodeIndex: number, private readonly eventName: string, private readonly dataIndex: number) { 
+        super(nodeIndex)
     }
 
-    doApply(node: Node, nodeIndex: number, dataItem: unknown): void {
+    protected bindNode (node: Node): void {
         if (node.nodeType !== Node.ELEMENT_NODE) {
-            console.error(`Expected element to add event listener ${this.eventName} but got ${node}`)
+            console.error(`Expected element to set attribute ${this.eventName} but got ${node}`)
             throw DomInconsistencyError
         }
+        this.element = node as Element
+        super.bindNode(node)
+    }
 
-        const listener = dataItem
+    protected applyChangedData(data: Array<any>): void {
+        const listener = data[this.dataIndex]
+
         if (typeof listener !== "function") {
-            console.error(`Cannot add ${listener} as event listener for ${this.eventName} to ${node}`)
+            console.error(`Cannot add ${listener} as event listener for ${this.eventName} to ${this.element}`)
         }
 
-        EventRegistry.instance.removeAllEventListeners(node, this.eventName)
-        EventRegistry.instance.addEventListener(node, this.eventName, listener)
+        EventRegistry.instance.removeAllEventListeners(this.element, this.eventName)
+        EventRegistry.instance.addEventListener(this.element, this.eventName, listener)
     }
 }
 
 /**
- * Applies a set of `Binding`s to a DOM subtree rooted at `root` with the values provided as `data`.
- * @param root the root of the DOM subtree to apply bindings to
- * @param bindings the bindings to apply
- * @param data the data array
- * @param previousData the data array from the previous update cycle if the same set of inserts - if any
+ * Applies the given data to all given `Binding`s.
+ * @param bindings the bindings
+ * @param data the data
  */
-export function applyBindings(root: Node, bindings: Array<Binding>, data: Array<any>) {
+export function applyData(bindings: Array<Binding>, data: Array<any>): void {
+    bindings.forEach(b => b.applyData(data))
+}
+
+/**
+ * Binds a set of `Binding`s to a DOM subtree rooted at `root` with the values provided as `data`.
+ * @param bindings the bindings to apply
+ * @param root the root of the DOM subtree to apply bindings to
+ */
+export function bindBindings(bindings: Array<Binding>, root: Node) {
     const treeWalker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT | NodeFilter.SHOW_TEXT, null)
 
     let nodeIndex = -1
@@ -217,10 +301,17 @@ export function applyBindings(root: Node, bindings: Array<Binding>, data: Array<
 
     while (node = treeWalker.nextNode()) {
         nodeIndex++
-        bindings.forEach(b => b.apply(node, nodeIndex, data))
+        bindings.forEach(b => b.bind(node, nodeIndex))
     }
 }
 
+/**
+ * Determines the bindings described by the placeholders nested below `root`.
+ * Walks the DOM subtree and collects `Bindings` returning the list of unbound
+ * bindings.
+ * @param root the root of the DOM subtree
+ * @returns the determined bindings
+ */
 export function determineBindings(root: Node): Array<Binding> {
     const bindings: Array<Binding> = []
     const treeWalker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT | NodeFilter.SHOW_TEXT, null)
@@ -344,7 +435,12 @@ function createMarker(): Node {
 }
 
 function isMarker(node: Node): boolean {
-    return node.nodeType === Node.COMMENT_NODE && isPlaceholder((node as Comment).data)
+    if (node.nodeType !== Node.COMMENT_NODE) {
+        return false
+    }
+
+    const comment = node as Comment
+    return comment.data === "" || isPlaceholder(comment.data)
 }
 
 function isIterable (value: unknown): value is Iterable<unknown> {

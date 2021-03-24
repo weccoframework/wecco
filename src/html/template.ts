@@ -16,9 +16,9 @@
  * limitations under the License.
  */
 
-import { moveAllChildren, removeAllChildren } from "../dom"
+import { removeAllChildren } from "../dom"
 import { ElementUpdater, UpdateTarget } from "../update"
-import { applyBindings, Binding, determineBindings } from "./binding"
+import { applyData, bindBindings, Binding, determineBindings } from "./binding"
 import { generatePlaceholder } from "./placeholder"
 
 
@@ -44,9 +44,9 @@ const elementTemplateMap = new WeakMap<UpdateTarget, HtmlTemplate>()
 
 export class HtmlTemplate implements ElementUpdater {
     private readonly templateString: string
-    private readonly data: Array<any>
     private readonly bindings: Array<Binding>
     private readonly templateElement: HTMLTemplateElement
+    private data: Array<any>
 
     static fromTemplateString(strings: TemplateStringsArray, args: any[]): HtmlTemplate {
         const templateString = generateHtml(strings)
@@ -61,11 +61,11 @@ export class HtmlTemplate implements ElementUpdater {
         return tpl
     }
 
-    private constructor(templateString: string, data: any[], templateElement: HTMLTemplateElement, inserts: Array<Binding>) {
+    private constructor(templateString: string, data: any[], templateElement: HTMLTemplateElement, bindings: Array<Binding>) {
         this.templateString = templateString
-        this.data = data
         this.templateElement = templateElement
-        this.bindings = inserts
+        this.bindings = bindings
+        this.data = data
     }
 
     clone(args: Array<any>): HtmlTemplate {
@@ -73,22 +73,22 @@ export class HtmlTemplate implements ElementUpdater {
     }
 
     updateElement(host: UpdateTarget) {
-        // if (elementTemplateMap.has(host)) {
-        //     const tpl = elementTemplateMap.get(host)                    
+        if (elementTemplateMap.has(host)) {
+            const tpl = elementTemplateMap.get(host)
             
-        //     if (tpl.templateElement === this.templateElement) {
-        //         applyBindings(host, this.bindings, this.data)
-        //         elementTemplateMap.set(host, this)
-        
-        //         return
-        //     }
-        // }        
+            if (tpl.templateElement === this.templateElement) {
+                applyData(tpl.bindings, this.data)
+                tpl.data = this.data
+                return
+            }
+        }        
 
         removeAllChildren(host)
-        moveAllChildren(this.templateElement.content.cloneNode(true), host)
-        applyBindings(host, this.bindings, this.data)
+        host.appendChild(this.templateElement.content.cloneNode(true))
+        bindBindings(this.bindings, host)
+        applyData(this.bindings, this.data)
         
-        // elementTemplateMap.set(host, this)
+        elementTemplateMap.set(host, this)
     }
 }
 

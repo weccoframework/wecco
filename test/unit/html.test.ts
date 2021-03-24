@@ -20,6 +20,10 @@ import { expect } from "iko"
 import { ElementUpdate, updateElement } from "../../src/update"
 import { html } from "../../src/html"
 
+function removeMarkerComments (html: string): string {
+    return html.replace(/<!---->/g, "")
+}
+
 describe("html.ts", async () => {
     beforeEach(() => {
         document.body = document.createElement("body")
@@ -30,19 +34,19 @@ describe("html.ts", async () => {
             it("should create html from static literal", () => {
                 updateElement(document.body, html`<p>hello, world!</p>`)
     
-                expect(document.body.innerHTML).toBe("<p>hello, world!</p>")
+                expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello, world!</p>")
             })
     
             it("should create html w/ placeholder filling innerText", () => {
                 updateElement(document.body, html`<p>${"hello, world!"}</p>`)
     
-                expect(document.body.innerHTML).toBe("<p>hello, world!<!----></p>")
+                expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello, world!</p>")
             })
     
             it("should create html w/ placeholder surrounded by static text", () => {
                 updateElement(document.body, html`<p>hello, ${"world"}!</p>`)
     
-                expect(document.body.innerHTML).toBe("<p>hello, world<!---->!</p>")
+                expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello, world!</p>")
             })
 
             it("should create html w/ toplevel placeholder", () => {
@@ -50,13 +54,13 @@ describe("html.ts", async () => {
     
                 updateElement(document.body, html`<p>Hello</p>${gretee}`)
     
-                expect(document.body.innerHTML).toBe(`<p>Hello</p>world<!---->`)
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<p>Hello</p>world`)
             })
     
             it("should create html w/ nested and toplevel placeholder", () => {
                 updateElement(document.body, html`<p>${"hello"}</p>${"world"}`)
     
-                expect(document.body.innerHTML).toBe(`<p>hello<!----></p>world<!---->`)
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<p>hello</p>world`)
             })
     
             it("should create html w/ multiple adjecent placeholder", () => {
@@ -65,7 +69,7 @@ describe("html.ts", async () => {
     
                 updateElement(document.body, html`<p>${message} ${gretee}!</p>`)
     
-                expect(document.body.innerHTML).toBe(`<p>Hello,<!----> world<!---->!</p>`)
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<p>Hello, world!</p>`)
             })
     
             it("should create html w/ placeholder for whole attribute value", () => {
@@ -74,7 +78,7 @@ describe("html.ts", async () => {
                 const template = (html`<p class=${classes}>hello, world!</p>`)
                 updateElement(document.body, template)
     
-                expect(document.body.innerHTML).toBe(`<p class="small hero">hello, world!</p>`)
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<p class="small hero">hello, world!</p>`)
             })
     
             it("should create html w/ placeholder as part of attribute value", () => {
@@ -83,7 +87,7 @@ describe("html.ts", async () => {
                 const template = (html`<p class="${classes} hero">hello, world!</p>`)
                 updateElement(document.body, template)
     
-                expect(document.body.innerHTML).toBe(`<p class="small hero">hello, world!</p>`)
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<p class="small hero">hello, world!</p>`)
             })
     
             it("should create html w/ multiple placeholders as part of attribute value", () => {
@@ -92,19 +96,19 @@ describe("html.ts", async () => {
                 const template = (html`<p class="${classes} hero ${"col"}">hello, world!</p>`)
                 updateElement(document.body, template)
     
-                expect(document.body.innerHTML).toBe(`<p class="small hero col">hello, world!</p>`)
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<p class="small hero col">hello, world!</p>`)
             })
     
             it("should create html w/ boolean attribute placeholder set to false", () => {            
                 updateElement(document.body, html`<a ?disabled=${false}>hello, world!</a>`)
     
-                expect(document.body.innerHTML).toBe(`<a>hello, world!</a>`)
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<a>hello, world!</a>`)
             })
     
             it("should create html w/ boolean attribute placeholder set to true", () => {            
                 updateElement(document.body, html`<a ?disabled=${true}>hello, world!</a>`)
     
-                expect(document.body.innerHTML).toBe(`<a disabled="disabled">hello, world!</a>`)
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<a disabled="disabled">hello, world!</a>`)
             })
     
             it("should create html w/ event placeholder", () => {
@@ -114,7 +118,7 @@ describe("html.ts", async () => {
                 const template = (html`<a @click=${callback}>Hello, world</a>`)
                 updateElement(document.body, template)
     
-                expect(document.body.innerHTML).toBe(`<a>Hello, world</a>`)
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<a>Hello, world</a>`)
     
                 document.querySelector("a").dispatchEvent(new MouseEvent("click"))
                 expect(clicked).toBe(true)
@@ -127,7 +131,7 @@ describe("html.ts", async () => {
                 const template = (html`<a @update=${callback}>Hello, world</a>`)
                 updateElement(document.body, template)
     
-                expect(document.body.innerHTML).toBe(`<a>Hello, world</a>`)
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<a>Hello, world</a>`)
                 expect(element.nodeName).toBe("A")
             })
     
@@ -142,13 +146,13 @@ describe("html.ts", async () => {
             it("should render array of strings as placeholder", () => {
                 updateElement(document.body, html`<ul>${"abc".split("")}</ul>`)
 
-                expect(document.body.innerHTML).toBe(`<ul>abc</ul>`)
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<ul>abc</ul>`)
             })
 
             it("should render array of nested templates as placeholder", () => {
                 updateElement(document.body, html`<ul>${"abc".split("").map(s => html`<li>${s}</li>`)}</ul>`)
 
-                expect(document.body.innerHTML).toBe(`<ul><li>a<!----></li><li>b<!----></li><li>c<!----></li></ul>`)
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<ul><li>a</li><li>b</li><li>c</li></ul>`)
             })
         })
 
@@ -156,13 +160,13 @@ describe("html.ts", async () => {
             it("should create html w/ placeholder containing nested html", () => {
                 updateElement(document.body, html`<p>${html`<em>hello, world!</em>`}</p>`)
     
-                expect(document.body.innerHTML).toBe("<p><em>hello, world!</em></p>")
+                expect(removeMarkerComments(document.body.innerHTML)).toBe("<p><em>hello, world!</em></p>")
             })
 
             it("should create html w/ placeholder containing nested html and static elements", () => {
                 updateElement(document.body, html`<p>hello, ${html`<em>world!</em>`}</p>`)
     
-                expect(document.body.innerHTML).toBe("<p>hello, <em>world!</em></p>")
+                expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello, <em>world!</em></p>")
             })
     
             it("should create html w/ placeholder containing nested element", () => {
@@ -170,7 +174,7 @@ describe("html.ts", async () => {
                 e.appendChild(document.createTextNode("hello, world!"))
                 updateElement(document.body, html`<p>${e}</p>`)
     
-                expect(document.body.innerHTML).toBe("<p><em>hello, world!</em></p>")
+                expect(removeMarkerComments(document.body.innerHTML)).toBe("<p><em>hello, world!</em></p>")
             })
         })
 
@@ -179,10 +183,10 @@ describe("html.ts", async () => {
                 const tpl = (name: string) => html`<p>hello, ${name}!</p>`
                 updateElement(document.body, tpl("world"))
                 document.querySelector("p").setAttribute("data-test-marker", "test")
-                expect(document.body.innerHTML).toBe(`<p data-test-marker="test">hello, world<!---->!</p>`)
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<p data-test-marker="test">hello, world!</p>`)
     
                 updateElement(document.body, tpl("foo"))
-                expect(document.body.innerHTML).toBe(`<p data-test-marker="test">hello, foo<!---->!</p>`)
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<p data-test-marker="test">hello, foo!</p>`)
             })
 
             it("should only update changed attribute values", () => {
@@ -191,10 +195,10 @@ describe("html.ts", async () => {
                 updateElement(document.body, tpl("world"))
                 document.querySelector("p").setAttribute("data-test-marker", "test");
                 (document.querySelector("p").firstChild as Text).data = "foobar"                
-                expect(document.body.innerHTML).toBe(`<p data-name="world" data-test-marker="test">foobar</p>`)
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<p data-name="world" data-test-marker="test">foobar</p>`)
     
                 updateElement(document.body, tpl("foo"))
-                expect(document.body.innerHTML).toBe(`<p data-name="foo" data-test-marker="test">foobar</p>`)
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<p data-name="foo" data-test-marker="test">foobar</p>`)
             })
 
             it("should re-render updated nested template", () => {
@@ -202,10 +206,10 @@ describe("html.ts", async () => {
                 const wrapper = (content: ElementUpdate) => html `<div>${content}</div>`
 
                 updateElement(document.body, wrapper(tpl("world")))
-                expect(document.body.innerHTML).toBe(`<div><p>hello, world<!---->!</p></div>`)
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<div><p>hello, world!</p></div>`)
 
                 updateElement(document.body, wrapper(tpl("foo")))
-                expect(document.body.innerHTML).toBe(`<div><p>hello, foo<!---->!</p></div>`)
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<div><p>hello, foo!</p></div>`)
             })
 
             it("should re-render different nested template", () => {
@@ -214,10 +218,10 @@ describe("html.ts", async () => {
                 const wrapper = (content: ElementUpdate) => html `<div>${content}</div>`
 
                 updateElement(document.body, wrapper(tpl1()))
-                expect(document.body.innerHTML).toBe(`<div><p>hello, world!</p></div>`)
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<div><p>hello, world!</p></div>`)
 
                 updateElement(document.body, wrapper(tpl2()))
-                expect(document.body.innerHTML).toBe(`<div><p>hello, foo!</p></div>`)
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<div><p>hello, foo!</p></div>`)
             })
 
             it("should re-render differently structured nested template", () => {
@@ -226,42 +230,42 @@ describe("html.ts", async () => {
                 const wrapper = (content: ElementUpdate) => html `<div>${content}</div>`
 
                 updateElement(document.body, wrapper(tpl1()))
-                expect(document.body.innerHTML).toBe(`<div><p>hello, world!</p></div>`)
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<div><p>hello, world!</p></div>`)
 
                 updateElement(document.body, wrapper(tpl2()))
-                expect(document.body.innerHTML).toBe(`<div><span>foobar</span></div>`)
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<div><span>foobar</span></div>`)
             })
 
             it("should re-render nested list template", () => {
                 const tpl = (items: Array<string>) => html`<ul>${items.map(i => html`<li>${i}</li>`)}</ul>`
 
                 updateElement(document.body, tpl(["z"]))
-                expect(document.body.innerHTML).toBe(`<ul><li>z</li></ul>`)
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<ul><li>z</li></ul>`)
 
                 updateElement(document.body, tpl(["a", "b", "c"]))
-                expect(document.body.innerHTML).toBe(`<ul><li>a</li><li>b</li><li>c</li></ul>`)
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<ul><li>a</li><li>b</li><li>c</li></ul>`)
             })
 
             it("should re-render nested html template and propagate @update event", () => {
                 let updateCalled = 0
     
                 updateElement(document.body, html`<div>${html`<span @update=${() => { updateCalled++ }}>hello, ${"world"}!</span>`}</div>`)
-                expect(document.querySelector("span").innerHTML).toBe("hello, world<!---->!")
+                expect(removeMarkerComments(document.querySelector("span").innerHTML)).toBe("hello, world!")
                 expect(updateCalled).toBe(1)
                 
                 updateElement(document.body, html`<div>${html`<span @update=${() => { updateCalled++ }}>hello, ${"foo"}!</span>`}</div>`)
-                expect(document.querySelector("span").innerHTML).toBe("hello, foo<!---->!")
+                expect(removeMarkerComments(document.querySelector("span").innerHTML)).toBe("hello, foo!")
                 expect(updateCalled).toBe(2)
             })
     
-            it.skip("should re-render nested list template (2)", () => {
+            it("should re-render nested list template (2)", () => {
                 const tpl = (items: Array<string>) => html`<ul>${items.map(i => html`<li>${i}</li>`)}</ul>`
                 
                 updateElement(document.body, tpl(["a", "b", "c"]))
-                expect(document.body.innerHTML).toBe(`<ul><li>a</li><li>b</li><li>c</li></ul>`)
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<ul><li>a</li><li>b</li><li>c</li></ul>`)
 
                 updateElement(document.body, tpl(["z"]))
-                expect(document.body.innerHTML).toBe(`<ul><li>z</li></ul>`)
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<ul><li>z</li></ul>`)
             })
         })
     })

@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-import { ElementSelector, moveAllChildren, removeAllChildren, resolve } from "./dom"
+import { ElementSelector, removeAllChildren, resolve } from "./dom"
 
 /**
  * `UpdateTarget` defines the type of a target of an update operation.
@@ -123,15 +123,15 @@ class CustomElementFilter implements NodeFilter {
 
 function executeElementUpdate(targetElement: UpdateTarget, request: ElementUpdate): void {
     if (Array.isArray(request)) {
-        // An array of requests. Apply one at a time to a sideboard `div`
+        // An array of requests. Apply one at a time to a DocumentFragment
         // and move the resulting elements under target.
         // Clear the target element upfront to get a "fresh" starting point.
         removeAllChildren(targetElement)
         
         request.forEach(r => {
-            const tpl = document.createElement("div")
-            updateElement(tpl, r)
-            moveAllChildren(tpl, targetElement)
+            const fragment = document.createDocumentFragment()
+            updateElement(fragment, r)
+            targetElement.appendChild(fragment)
         })
         
         return

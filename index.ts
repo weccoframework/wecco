@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-export { ElementSelector, resolve, removeAllChildren } from "./src/dom"
+export { ElementSelector, resolve, removeAllChildren, removeNodes } from "./src/dom"
 export { updateElement, ElementUpdate, ElementUpdateFunction, ElementUpdater, UpdateTarget } from "./src/update"
 export { define, component, WeccoElement, NotifyUpdateCallback, RenderCallback, RenderContext } from "./src/element"
 export { shadow, DoWithShadowCallback } from "./src/shadow"
