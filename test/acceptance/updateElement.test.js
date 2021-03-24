@@ -20,6 +20,10 @@ const { expect } = require("iko")
 const { fixture: fixture } = require("./fixture.test")
 const { sleep } = require("./sleep")
 
+function removeMarkerComments (html) {
+    return html.replace(/<!---->/g, "")
+}
+
 describe("updateElement", () => {
     it("should render static text", async () => {
         await fixture.page.evaluate(() => wecco.updateElement("#app", "test"))
@@ -50,7 +54,7 @@ describe("updateElement", () => {
         await sleep()
 
         const text = await fixture.page.$eval("#app", e => e.innerHTML)
-        expect(text).toBe(`<p>hello, world<!----></p>dude<!---->`)
+        expect(removeMarkerComments(text)).toBe(`<p>hello, world</p>dude`)
     })
 
     it("should render array of static and dynamic text using tagged text", async () => {
@@ -61,7 +65,7 @@ describe("updateElement", () => {
         await sleep()
 
         let text = await fixture.page.$eval("#app", e => e.innerHTML)
-        expect(text).toBe(`<p>hello, world<!----></p>hello, world again`)
+        expect(removeMarkerComments(text)).toBe(`<p>hello, world</p>hello, world again`)
     })
 
     describe("update event", () => {
@@ -107,7 +111,7 @@ describe("updateElement", () => {
     })
 
     describe("template reuse", () => {
-        it.skip("render should only re-render changed elements", async () => {
+        it("render should only re-render changed elements", async () => {
             await fixture.page.evaluate(() => {
                 document.test = {}
                 document.test.app = document.body.querySelector("#app")
