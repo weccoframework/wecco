@@ -19,6 +19,7 @@
 import { removeNodes } from "../dom"
 import { ElementUpdate, isElementUpdate, updateElement } from "../update"
 import { extractPlaceholderId, isPlaceholder, splitAtPlaceholders } from "./placeholder"
+import { HtmlTemplate } from "./template"
 
 /**
  * An error thrown in case an `Insert` discovers some inconsistency in the
@@ -145,9 +146,14 @@ abstract class SingleDataIndexBindingBase extends BindingBase {
  * Modifications can be constrained to a single `TextNode` or they
  * can include whole subtrees.
  */
-class NodeBinding extends SingleDataIndexBindingBase {
+class NodeBinding extends BindingBase {
     private startMarker: Node | undefined
     private endMarker: Node | undefined
+    private boundData: any
+
+    constructor(nodeIndex: number, protected readonly dataIndex: number) {
+        super(nodeIndex)
+    }
 
     protected bindNode(node: Node): void {
         super.bindNode(node);
@@ -159,22 +165,92 @@ class NodeBinding extends SingleDataIndexBindingBase {
 
         // Create a start marker comment and insert it
         // directly before the end marker
-        this.startMarker = document.createComment("")
-        node.parentElement.insertBefore(this.startMarker, node)
+        this.startMarker = node.parentElement.insertBefore(createMarker(), node)
     }
 
-    protected applyChangedData(dataItem: any): void {
-        // if (isIterable(dataItem)) {
-        //     this.applyIterable(node, dataItem, previousDataItem)
-        // } else if (isElementUpdate(dataItem)) {
-        if (isElementUpdate(dataItem)) {
+    applyData(data: ReadonlyArray<any>): void {
+        const dataItem = data[this.dataIndex]
+
+        if (this.boundData === dataItem) {
+            return
+        }
+
+        if (typeof dataItem === "string") {
+            // Check strings first, as strings are also iterable and
+            // ElementUpdates. As we need some special string handling,
+            // we check this first
+            this.applyText(dataItem)
+        } else if (isIterable(dataItem)) {
+            this.applyIterable(dataItem)
+        } else if (isElementUpdate(dataItem)) {
             this.applyElementUpdate(dataItem)
         } else {
+            // As a fallback, convert everything else to a string (i.e. numbers)
+            // and render them as text content.
             this.applyText(String(dataItem))
         }
     }
 
+    private applyIterable(dataItem: Iterable<any>) {
+        const dataArray = Array.from(dataItem)
+
+        if (Array.isArray(this.boundData)) {
+            const previousBindings = this.boundData as Array<NodeBinding>
+
+            // There has been data applied previously and that also was an array.
+            // So we try to reuse these bindings
+
+            if (dataArray.length < previousBindings.length) {
+                // The previous render cycle produced more elements.
+                // Remove superfluous elements
+                removeNodes(previousBindings[dataArray.length].startMarker, this.endMarker)
+
+                // Now shorten the array of bindings
+                this.boundData = previousBindings.slice(0, dataArray.length)
+            } else if (dataArray.length > previousBindings.length) {
+                // The previous render cycle produced less elements.
+                // Append the missing ones.
+                this.createBindingsFromIterable(dataArray, previousBindings.length)
+            }
+        } else {
+            // Previously, no iterable has been rendered.
+
+            // First, clear the content
+            this.clear()
+
+            // Now, for every element in the iterable, we create a new 
+            // and dedicated NodeBinding and store these as this.boundData.
+            this.boundData = []
+            this.createBindingsFromIterable(dataArray)
+        }
+
+        // Now apply all bindings
+        (this.boundData as Array<Binding>).forEach(b => b.applyData(dataArray))
+    }
+
+    private createBindingsFromIterable(dataArray: Array<any>, startIndex = 0) {
+        for (let idx = startIndex; idx < dataArray.length; ++idx) {
+            const endMarker = this.node.parentElement.insertBefore(createMarker(), this.node)
+            const binding = new NodeBinding(this.nodeIndex, idx)
+            binding.bind(endMarker, this.nodeIndex)
+            this.boundData.push(binding)
+        }
+    }
+
     private applyElementUpdate(update: ElementUpdate) {
+        if ((update instanceof HtmlTemplate) && (this.boundData instanceof HtmlTemplate)) {
+            if (update.templateString === this.boundData.templateString) {
+                // Both the previously rendered data as well as the data to render now
+                // are HtmlTemplates that share the same underlying markup.
+                // Rebind the bound values and update it so we can reuse it.
+
+                this.boundData.data = update.data
+                applyData(this.boundData.bindings, update.data)
+                
+                return
+            }
+        }
+
         // Remove all nodes between start and end in case a previous render run
         // has created data
         this.clear()
@@ -184,9 +260,13 @@ class NodeBinding extends SingleDataIndexBindingBase {
         const fragment = document.createDocumentFragment()
         updateElement(fragment, update, false)
         this.node.parentElement.insertBefore(fragment, this.node)
+
+        this.boundData = update
     }
 
     private applyText(text: string) {
+        this.boundData = text
+
         if (isMarker(this.node)) {
             // The actual node is a marker node (a comment with the {{wecco:...}} content).
             // Insert a new text node before the marker, remove the marker

@@ -45,9 +45,9 @@ const elementTemplateMap = new WeakMap<UpdateTarget, HtmlTemplate>()
 export class HtmlTemplate implements ElementUpdater {
     private _templateString: string | undefined
     private _templateElement: HTMLTemplateElement | undefined
-    private bindings: Array<Binding> | undefined
+    private _bindings: Array<Binding> | undefined
 
-    constructor(private readonly strings: TemplateStringsArray, private data: ReadonlyArray<any>) { }
+    constructor(private readonly strings: TemplateStringsArray, public data: ReadonlyArray<any>) { }
 
     get templateString(): string {
         if (typeof this._templateString === "undefined") {
@@ -60,9 +60,17 @@ export class HtmlTemplate implements ElementUpdater {
         if (typeof this._templateElement === "undefined") {
             this._templateElement = document.createElement("template")
             this._templateElement.innerHTML = this.templateString
-            this.bindings = determineBindings(this._templateElement.content)
+            this._bindings = determineBindings(this._templateElement.content)
         }
         return this._templateElement
+    }
+
+    get bindings(): ReadonlyArray<Binding> {
+        if (typeof this._bindings === "undefined") {
+            return []
+        }
+
+        return this._bindings
     }
 
     updateElement(host: UpdateTarget) {

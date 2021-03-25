@@ -236,7 +236,7 @@ describe("html.ts", async () => {
                 expect(removeMarkerComments(document.body.innerHTML)).toBe(`<div><span>foobar</span></div>`)
             })
 
-            it("should re-render nested list template", () => {
+            it("should re-render nested list template w/ more elements than before", () => {
                 const tpl = (items: Array<string>) => html`<ul>${items.map(i => html`<li>${i}</li>`)}</ul>`
 
                 updateElement(document.body, tpl(["z"]))
@@ -244,6 +244,16 @@ describe("html.ts", async () => {
 
                 updateElement(document.body, tpl(["a", "b", "c"]))
                 expect(removeMarkerComments(document.body.innerHTML)).toBe(`<ul><li>a</li><li>b</li><li>c</li></ul>`)
+            })
+    
+            it("should re-render nested list template w/ less elements than before", () => {
+                const tpl = (items: Array<string>) => html`<ul>${items.map(i => html`<li>${i}</li>`)}</ul>`
+                
+                updateElement(document.body, tpl(["a", "b", "c"]))
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<ul><li>a</li><li>b</li><li>c</li></ul>`)
+
+                updateElement(document.body, tpl(["z"]))
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<ul><li>z</li></ul>`)
             })
 
             it("should re-render nested html template and propagate @update event", () => {
@@ -256,17 +266,7 @@ describe("html.ts", async () => {
                 updateElement(document.body, html`<div>${html`<span @update=${() => { updateCalled++ }}>hello, ${"foo"}!</span>`}</div>`)
                 expect(removeMarkerComments(document.querySelector("span").innerHTML)).toBe("hello, foo!")
                 expect(updateCalled).toBe(2)
-            })
-    
-            it("should re-render nested list template (2)", () => {
-                const tpl = (items: Array<string>) => html`<ul>${items.map(i => html`<li>${i}</li>`)}</ul>`
-                
-                updateElement(document.body, tpl(["a", "b", "c"]))
-                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<ul><li>a</li><li>b</li><li>c</li></ul>`)
-
-                updateElement(document.body, tpl(["z"]))
-                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<ul><li>z</li></ul>`)
-            })
+            })            
 
             it("should re-render nested html tag with same values", () => {
                 const tpl = (name: string) => html`<p>hello, ${html`<em>${name}</em>`}</p>`
