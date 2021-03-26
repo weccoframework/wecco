@@ -23,16 +23,6 @@ interface Update {
     value: any
 }
 
-interface MarkAsComplete {
-    command: "mark-as-complete",
-    index: number,
-}
-
-interface PickDueDate {
-    command: "pick-due-date",
-    index: number,
-}
-
 interface Delete {
     command: "delete",
     index: number,
@@ -78,7 +68,7 @@ class Store {
 
 // -- View
 
-function view(model: TodoList, context: wecco.AppContext<Message>) {
+function view(model: TodoList, context: wecco.AppContext<Message>): wecco.ElementUpdate {
     return wecco.html`
         <h2>${model.title || "Todos"}</h2>
         <div>
@@ -91,19 +81,21 @@ function view(model: TodoList, context: wecco.AppContext<Message>) {
     `
 }
 
-function item_view(model: TodoItem, idx: number, context: wecco.AppContext<Message>) {
+function item_view(model: TodoItem, idx: number, context: wecco.AppContext<Message>): wecco.ElementUpdate {
     const onChange = (e: InputEvent) => context.emit({
-        command: "update", 
-        index: idx,
-        field: "summary",
-        value: (e.target as HTMLInputElement).value,
-    })
+            command: "update", 
+            index: idx,
+            field: "summary",
+            value: (e.target as HTMLInputElement).value,
+        })
+
     const markAsComplete = () => context.emit({
         command: "update",
         index: idx,
         field: "complete",
         value: true,
     })
+
     const remove = () => context.emit({
         command: "delete",
         index: idx,
@@ -137,11 +129,14 @@ function update(model: TodoList, message: Message): TodoList {
         case "add":
             model.items.push(new TodoItem("", false, null, true))
             break
-        case "update":
+        
+        case "update": {
             const item = model.items[message.index]
             item.editing = false;
             (item as any)[message.field] = message.value            
             break
+        }
+
         case "delete":
             model.items.splice(message.index, 1)
             break

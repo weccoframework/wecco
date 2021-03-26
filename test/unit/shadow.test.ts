@@ -1,7 +1,7 @@
 /*
  * This file is part of wecco.
  *
- * Copyright (c) 2019 - 2020 The wecco authors.
+ * Copyright (c) 2019 - 2021 The wecco authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 
 import { expect } from "iko"
 import { shadow } from "../../src/shadow"
-import { ElementUpdater } from "../../src/dom";
+import { ElementUpdater } from "../../src/update";
 
 describe("shadow.ts", async () => {
     afterEach(() => {

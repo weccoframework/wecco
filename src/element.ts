@@ -1,7 +1,7 @@
 /*
  * This file is part of wecco.
  * 
- * Copyright (c) 2019 - 2020 The wecco authors.
+ * Copyright (c) 2019 - 2021 The wecco authors.
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,8 @@
  * limitations under the License.
  */
 
-import { ElementSelector, resolve, removeAllChildren, ElementUpdate, updateElement } from "./dom"
+import { ElementSelector, resolve } from "./dom"
+import { ElementUpdate, updateElement } from "./update"
 
 /**
  * `NotifyUpdateCallback` defines the type for functions that are called to notify of an element update.
@@ -210,23 +211,11 @@ export abstract class WeccoElement<T> extends HTMLElement {
                         this.setAttribute(attributeNameForModelKey(k), (this.data as any)[k])
                     }
                 })
-                this.updateDom(true)
+                this.updateDom()
             })
     }
 
-    private updateDom(removePreviousDom: boolean = false) {
-        if (removePreviousDom) {
-            let host: Node
-
-            if (this.shadowRoot) {
-                host = this.shadowRoot
-            } else {
-                host = this
-            }
-
-            removeAllChildren(host)
-        }
-
+    private updateDom() {
         const elementUpdate = this.renderCallback(this.data || ({} as T), this.renderContext)
         this.updateRequested = false
 
@@ -297,14 +286,14 @@ export function define<T>(name: string, renderCallback: RenderCallback<T>, ...ob
  * @param modelKey the model key name
  * @returns the corresponding attribute name
  */
-function attributeNameForModelKey (modelKey: string): string {
+function attributeNameForModelKey(modelKey: string): string {
     let result = ""
     let wasUpper = false
 
     for (let c of modelKey) {
         if (c.toUpperCase() === c) {
             if (wasUpper) {
-                result += "-"                
+                result += "-"
             }
             result += c.toLowerCase()
             wasUpper = true
@@ -323,7 +312,7 @@ function attributeNameForModelKey (modelKey: string): string {
  * @param attributeName the attribute name
  * @returns the corresponding model key name
  */
-function modelKeyForAttributeName (attributeName: string): string {
+function modelKeyForAttributeName(attributeName: string): string {
     let result = ""
     let wasDash = false
 

@@ -1,7 +1,7 @@
 /*
  * This file is part of wecco.
  *
- * Copyright (c) 2019 - 2020 The wecco authors.
+ * Copyright (c) 2019 - 2021 The wecco authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
  */
 
 const { resolve } = require("path")
-const { exists, mkdir } = require("fs")
+const { writeFile, mkdir, stat } = require("fs/promises")
 
 const puppeteer = require("puppeteer")
 const express = require("express")
@@ -25,7 +25,7 @@ const rollup = require("rollup")
 const typescript = require("rollup-plugin-typescript2")
 const commonjs = require("rollup-plugin-commonjs")
 
-const reportsDirectory = resolve(process.cwd(), "reports", "screenshots")
+const reportsDirectory = resolve(process.cwd(), "reports")
 
 let server
 
@@ -82,16 +82,12 @@ after(() => {
     server.close()
 })
 
-before(cb => {
-    exists(reportsDirectory, exists => {
-        if (exists) {
-            return cb()
-        }
-
-        mkdir(reportsDirectory, { recursive: true }, err => {
-            cb(err)
-        })
-    })
+before(async () => {
+    try {
+        await stat(reportsDirectory)
+    } catch (e) {
+        await mkdir(reportsDirectory, { recursive: true })
+    }
 })
 
 const fixture = {
@@ -105,15 +101,35 @@ before(async () => {
     fixture.browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] })
 })
 
-beforeEach(async () => {
+beforeEach(async function () {
+    const test = this.currentTest    
+    test.messages = []
+
     fixture.page = await fixture.browser.newPage()
+
+    fixture.page
+        .on("console", message => {
+            test.messages.push(`${message.type().toUpperCase()} ${message.text()}`)
+        })
+        .on("pageerror", ({ message }) => test.messages.push(`PAGE ERROR: ${message}`))
+
     await fixture.page.goto("http://localhost:8888/")
 })
 
-afterEach(async function renderScreenshot() {
+afterEach(async function renderScreenshot() {   
+    try {
+        await stat(resolve(reportsDirectory, this.currentTest.title))
+    } catch (e) {
+        await mkdir(resolve(reportsDirectory, this.currentTest.title))
+    }     
+
     await fixture.page.screenshot({
-        path: resolve(reportsDirectory, `${this.currentTest.title}.png`),
+        path: resolve(reportsDirectory, this.currentTest.title, "screen.png"),
     })
+
+    const html = await fixture.page.evaluate(() => document.body.innerHTML)
+    await writeFile(resolve(reportsDirectory, this.currentTest.title, "index.html"), `<html><head></head><body>${html}</body></html>`, "utf8")
+    await writeFile(resolve(reportsDirectory, this.currentTest.title, "log"), this.currentTest.messages.join("\n"), "utf8")
 })
 
 after(async () => {

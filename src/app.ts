@@ -1,7 +1,7 @@
 /*
  * This file is part of wecco.
  * 
- * Copyright (c) 2019 - 2020 The wecco authors.
+ * Copyright (c) 2019 - 2021 The wecco authors.
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,8 @@
  * limitations under the License.
  */
 
-import { updateElement, ElementUpdate, ElementSelector, resolve, removeAllChildren } from "./dom"
+import { ElementSelector, resolve } from "./dom"
+import { updateElement, ElementUpdate } from "./update"
 
 /**
  * A function that can initialize a model.
@@ -55,7 +56,7 @@ export function app<MODEL, MESSAGE>(modelInitialier: ModelInitializer<MODEL>, up
 class AppContextImpl<MODEL, MESSAGE> implements AppContext<MESSAGE> {
     private renderUpdateTimeout: number | null = null
 
-    constructor (private model: MODEL, private updater: Updater<MODEL, MESSAGE>, private view: View<MODEL, MESSAGE>, private mointPoint: Element) {
+    constructor(private model: MODEL, private updater: Updater<MODEL, MESSAGE>, private view: View<MODEL, MESSAGE>, private mointPoint: Element) {
         updateElement(this.mointPoint, this.view(this.model, this))
     }
 
@@ -65,8 +66,7 @@ class AppContextImpl<MODEL, MESSAGE> implements AppContext<MESSAGE> {
         if (this.renderUpdateTimeout === null) {
             this.renderUpdateTimeout = window.setTimeout(() => {
                 this.renderUpdateTimeout = null
-                removeAllChildren(this.mointPoint)
-                updateElement(this.mointPoint, this.view(this.model, this))        
+                updateElement(this.mointPoint, this.view(this.model, this))
             }, 5)
         }
     }

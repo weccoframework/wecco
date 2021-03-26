@@ -1,7 +1,7 @@
 /*
  * This file is part of wecco.
  *
- * Copyright (c) 2019 - 2020 The wecco authors.
+ * Copyright (c) 2019 - 2021 The wecco authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,10 +17,11 @@
  */
 
 import { expect } from "iko"
-import { resolve, removeAllChildren, updateElement } from "../../src/dom"
+import { resolve, removeAllChildren } from "../../src/dom"
+import { updateElement } from "../../src/update"
 import { html } from "../../src/html"
 
-describe("dom.ts", async () => {
+describe("dom.ts", () => {
     afterEach(() => {
         document.body.innerHTML = ""
     })
@@ -62,60 +63,6 @@ describe("dom.ts", async () => {
 
             removeAllChildren(el)
             expect(el.childNodes.length).toBe(0)
-        })
-    })
-
-    describe("updateElement", () => {
-        let el: Element
-        beforeEach(() => {
-            el = document.createElement("div")
-        })
-
-        describe("w/ string", () => {
-            updateElement(el, "<span>hello, world</span>")
-            expect(el.childNodes.length).toBe(0)
-            expect(el.childNodes[0].textContent).toBe("hello, world")
-        })
-
-        describe("w/ element", () => {
-            const span = document.createElement("span")
-            span.textContent = "hello, world"
-            updateElement(el, span)
-            expect(el.childNodes.length).toBe(0)
-            expect(el.childNodes[0].textContent).toBe("hello, world")
-        })
-
-        describe("w/ element update function", () => {
-            updateElement(el, (e: Element) => {
-                const span = document.createElement("span")
-                span.textContent = "hello, world"
-                e.appendChild(span)
-            })
-            expect(el.childNodes.length).toBe(0)
-            expect(el.childNodes[0].textContent).toBe("hello, world")
-        })
-
-        describe("w/ element updater", () => {
-            updateElement(el, html`<span>hello, world</span>`)
-            expect(el.childNodes.length).toBe(0)
-            expect(el.childNodes[0].textContent).toBe("hello, world")
-        })
-
-        describe("w/ array", () => {
-            const span = document.createElement("span")
-            span.textContent = "hello, world #3"
-
-            it("should apply all updates", () => {
-                updateElement(el, [
-                    "<span>hello, world #1</span>",
-                    html`<span>hello, world #2</span>`,
-                    span,
-                ])
-                expect(el.childNodes.length).toBe(3)
-                expect(el.childNodes[0].textContent).toBe("hello, world #1")
-                expect(el.childNodes[1].textContent).toBe("hello, world #2")
-                expect(el.childNodes[3].textContent).toBe("hello, world #3")
-            })
         })
     })
 })

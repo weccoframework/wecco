@@ -1,6 +1,6 @@
 {
     "name": "@wecco/core",
-    "version": "0.14.3",
+    "version": "0.15.0",
     "description": "A simple, minimalistic web framework based on web components and HTML templates",
     "license": "Apache-2.0",
     "repository": {

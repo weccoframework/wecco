@@ -16,9 +16,20 @@
  * limitations under the License.
  */
 
-export { ElementSelector, resolve, removeAllChildren, removeNodes } from "./src/dom"
-export { updateElement, ElementUpdate, ElementUpdateFunction, ElementUpdater, UpdateTarget } from "./src/update"
-export { define, component, WeccoElement, NotifyUpdateCallback, RenderCallback, RenderContext } from "./src/element"
-export { shadow, DoWithShadowCallback } from "./src/shadow"
-export { html, HtmlTemplate } from "./src/html"
-export { AppContext, Updater, ModelInitializer, View, app } from "./src/app"
+import { ElementUpdater } from "../update"
+import { HtmlTemplate } from "./template"
+export { HtmlTemplate } from "./template"
+
+/**
+ * `html` is a string tag used to create dynamic html. The tag generates
+ * an `ElementUpdater` that can be used to update another Element's content.
+ * 
+ * Applying a `html`-generated content to an element repeatedly only updates
+ * the changed parts.
+ * 
+ * @param strings the string parts of the template
+ * @param args the arguments of the template
+ */
+export function html(strings: TemplateStringsArray, ...args: any): ElementUpdater {
+    return new HtmlTemplate(strings, args)
+}

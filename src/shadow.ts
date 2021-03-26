@@ -1,7 +1,7 @@
 /*
  * This file is part of wecco.
  * 
- * Copyright (c) 2019 - 2020 The wecco authors.
+ * Copyright (c) 2019 - 2021 The wecco authors.
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-import { ElementUpdateFunction, ElementUpdate, updateElement } from "./dom"
+import { ElementUpdateFunction, ElementUpdate, updateElement } from "./update"
 
 /**
  * `DoWithShadowCallback` can be used to automatically create a `ShadowRoot` for an element.
@@ -33,7 +33,7 @@ export function shadow(content: DoWithShadowCallback | ElementUpdate): ElementUp
         if (typeof content === "function") {
             content.call(null, shadow)
         } else {
-            updateElement(shadow.getRootNode() as Element, content)
+            updateElement(shadow.getRootNode() as Element, content, false)
         }
     }
 }
