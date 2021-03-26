@@ -1,5 +1,9 @@
 # Changelog
 
+# Version 0.15.1
+
+* fix: remove previous content when applying text content to node binding and non-text node found
+
 # Version 0.15.0
 
 * complete rewrite of `html` string tag to support partial updates which greatly improves performance
