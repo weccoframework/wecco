@@ -1,5 +1,11 @@
 # Changelog
 
+# Version 0.15.0
+
+* complete rewrite of `html` string tag to support partial updates which greatly improves performance
+
+** Breaking Change: `@mount` special binding dropped and replaced with `@update` event
+
 # Version 0.14.3
 
 * fix missing export of `UpdateTarget`
