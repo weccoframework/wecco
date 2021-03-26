@@ -20,9 +20,12 @@ import { ElementUpdater } from "../update"
 import { HtmlTemplate } from "./template"
 
 /**
- * `html` is a string tag to be used with string templates. The tag generates
- * an `ElementUpdater` that can be used as a return from a wecco element's render
- * callback.
+ * `html` is a string tag used to create dynamic html. The tag generates
+ * an `ElementUpdater` that can be used to update another Element's content.
+ * 
+ * Applying a `html`-generated content to an element repeatedly only updates
+ * the changed parts.
+ * 
  * @param strings the string parts of the template
  * @param args the arguments of the template
  */

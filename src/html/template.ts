@@ -21,34 +21,36 @@ import { ElementUpdater, UpdateTarget } from "../update"
 import { applyData, bindBindings, Binding, determineBindings } from "./binding"
 import { generatePlaceholder } from "./placeholder"
 
-
-export class HtmlTemplateCache {
-    static readonly instance = new HtmlTemplateCache()
-
-    private readonly entries = new WeakMap<TemplateStringsArray, HtmlTemplate>()
-
-    has(strings: TemplateStringsArray): boolean {
-        return this.entries.has(strings)
-    }
-
-    get(strings: TemplateStringsArray): HtmlTemplate {
-        return this.entries.get(strings)
-    }
-
-    set(strings: TemplateStringsArray, value: HtmlTemplate) {
-        this.entries.set(strings, value)
-    }
-}
-
+/**
+ * A cache for re-using instances of `HtmlTemplate` to update only
+ * changed parts.
+ */
 const elementTemplateMap = new WeakMap<UpdateTarget, HtmlTemplate>()
 
+/**
+ * An `ElementUpdater` that is created by the `html` string tag
+ * function.
+ * 
+ * `HtmlTemplate`s implement DOM subtrees, that contain dynamic 
+ * parts and that can be updated efficiently. 
+ */
 export class HtmlTemplate implements ElementUpdater {
     private _templateString: string | undefined
     private _templateElement: HTMLTemplateElement | undefined
     private _bindings: Array<Binding> | undefined
 
+    /**
+     * Constructs a `HtmlTemplate` from an array of static strings and an
+     * array of dynamic data elements.
+     * @param strings the strings as passed to the `html` string tag
+     * @param data the data arguments as passed to the `html` string tag
+     */
     constructor(private readonly strings: TemplateStringsArray, public data: ReadonlyArray<any>) { }
 
+    /**
+     * Generates a string containing the HTML markup as described by the strings array
+     * as well as special placeholder marker.
+     */
     get templateString(): string {
         if (typeof this._templateString === "undefined") {
             this._templateString = generateHtml(this.strings)
@@ -56,6 +58,9 @@ export class HtmlTemplate implements ElementUpdater {
         return this._templateString
     }
 
+    /**
+     * Create a `HTMLTemplateElement` containing the `templateString`.
+     */
     get templateElement(): HTMLTemplateElement {
         if (typeof this._templateElement === "undefined") {
             this._templateElement = document.createElement("template")
@@ -65,6 +70,9 @@ export class HtmlTemplate implements ElementUpdater {
         return this._templateElement
     }
 
+    /**
+     * Returns all `Binding`s used to update the dynamic parts of this template. 
+     */
     get bindings(): ReadonlyArray<Binding> {
         if (typeof this._bindings === "undefined") {
             return []
@@ -73,6 +81,10 @@ export class HtmlTemplate implements ElementUpdater {
         return this._bindings
     }
 
+    /**
+     * Called to apply the DOM described by this template to the given target.
+     * @param host the update target to apply the update to
+     */
     updateElement(host: UpdateTarget) {
         if (elementTemplateMap.has(host)) {
             const tpl = elementTemplateMap.get(host)
@@ -97,6 +109,12 @@ const PlaceholderAttributeRegex = /[a-z0-9-_@]+\s*=\s*$/i;
 const PlaceholderSingleQuotedAttributeRegex = /[a-z0-9-_@]+\s*=\s*'[^']*$/i;
 const PlaceholderDoubleQuotedAttributeRegex = /[a-z0-9-_@]+\s*=\s*"[^"]*$/i;
 
+/**
+ * Generates a HTML markup string from the given static string parts.
+ * Inserts placeholder strings between the static parts.
+ * @param strings the strings array
+ * @returns the HTML markup
+ */
 function generateHtml(strings: TemplateStringsArray) {
     let html = ""
 
