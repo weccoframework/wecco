@@ -20,5 +20,5 @@ export { ElementSelector, resolve, removeAllChildren, removeNodes } from "./src/
 export { updateElement, ElementUpdate, ElementUpdateFunction, ElementUpdater, UpdateTarget } from "./src/update"
 export { define, component, WeccoElement, NotifyUpdateCallback, RenderCallback, RenderContext } from "./src/element"
 export { shadow, DoWithShadowCallback } from "./src/shadow"
-export { html } from "./src/html"
+export { html, HtmlTemplate } from "./src/html"
 export { AppContext, Updater, ModelInitializer, View, app } from "./src/app"

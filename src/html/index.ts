@@ -18,6 +18,7 @@
 
 import { ElementUpdater } from "../update"
 import { HtmlTemplate } from "./template"
+export { HtmlTemplate } from "./template"
 
 /**
  * `html` is a string tag used to create dynamic html. The tag generates
