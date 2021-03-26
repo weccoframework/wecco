@@ -277,6 +277,16 @@ describe("html.ts", async () => {
                 updateElement(document.body, tpl("foo"))
                 expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello, <em>foo</em></p>")
             })
+
+            it("should re-render nested html followed by string", () => {
+                const tpl = (name: ElementUpdate) => html`<p>hello, ${name}</p>`
+
+                updateElement(document.body, tpl(html`<em>${"world"}</em>`))
+                expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello, <em>world</em></p>")
+
+                updateElement(document.body, tpl("foo"))
+                expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello, foo</p>")
+            })
         })
     })
 })

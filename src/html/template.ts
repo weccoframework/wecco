@@ -378,32 +378,18 @@ function generateHtml(strings: TemplateStringsArray) {
  
      private applyText(text: string) {
          this.boundData = text
- 
-         if (isMarker(this.node)) {
-             // The actual node is a marker node (a comment with the {{wecco:...}} content).
-             // Insert a new text node before the marker, remove the marker
-             // and update this node to point to the text node
- 
-             const textNode = document.createTextNode(text)
-             this.node.parentElement.insertBefore(textNode, this.endMarker)
- 
-             if ((typeof this.startMarker === "undefined") && (typeof this.endMarker === "undefined")) {
-                 // If the marker was the only child, remove it as we keep track of the insert point
-                 // using the create text node
-                 this.node.parentElement.removeChild(this.node)
-             }
- 
-             this.node = textNode
-             return
-         }
- 
+
          if (this.node.nodeType === Node.TEXT_NODE) {
-             (this.node as Text).data = text
-             return
-         }
- 
-         console.error(`Expected ${this.node} to be of type Text`)
-         throw DomInconsistencyError
+            // Got text element from previous render call. Reuse that 
+            (this.node as Text).data = text
+            return
+        }
+
+        // Got some other content (i.e. a nested HtmlTemplate).
+        // Clear the insert spot and insert a fresh text node.
+
+        this.clear()
+        this.node = this.node.parentElement.insertBefore(document.createTextNode(text), this.endMarker)
      }
  
      private clear(): void {
