@@ -342,7 +342,7 @@ function generateHtml(strings: TemplateStringsArray) {
  
      private createBindingsFromIterable(dataArray: Array<any>, startIndex = 0) {
          for (let idx = startIndex; idx < dataArray.length; ++idx) {
-             const endMarker = this.node.parentElement.insertBefore(createMarker(), this.node)
+             const endMarker = this.endMarker.parentElement.insertBefore(createMarker(), this.endMarker)
              const binding = new NodeBinding(this.nodeIndex, idx)
              binding.bind(endMarker, this.nodeIndex)
              this.boundData.push(binding)
@@ -371,7 +371,7 @@ function generateHtml(strings: TemplateStringsArray) {
          // all nodes before node.
          const fragment = document.createDocumentFragment()
          updateElement(fragment, update, false)
-         this.node.parentElement.insertBefore(fragment, this.node)
+         this.endMarker.parentElement.insertBefore(fragment, this.endMarker)
  
          this.boundData = update
      }
@@ -389,7 +389,7 @@ function generateHtml(strings: TemplateStringsArray) {
         // Clear the insert spot and insert a fresh text node.
 
         this.clear()
-        this.node = this.node.parentElement.insertBefore(document.createTextNode(text), this.endMarker)
+        this.node = this.endMarker.parentElement.insertBefore(document.createTextNode(text), this.endMarker)
      }
  
      private clear(): void {
