@@ -1,5 +1,9 @@
 # Changelog
 
+# Version 0.15.2
+
+* fix null reference error when updating node bindings
+
 # Version 0.15.1
 
 * fix: remove previous content when applying text content to node binding and non-text node found
