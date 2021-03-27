@@ -3,11 +3,38 @@ import * as wecco from "@wecco/core"
 // -- Models
 
 class TodoList {
-    constructor (public title: String | null, public items: TodoItem[]) {}
+    constructor (public readonly title: String | null, public readonly items: ReadonlyArray<TodoItem>) {}
+
+    addItem(item: TodoItem): TodoList {
+        const items = this.items.slice()
+        items.push(item)
+        return new TodoList(this.title, items)
+    }
+
+    deleteItem(index: number): TodoList {
+        const items = this.items.slice()
+        items.splice(index, 1)
+        return new TodoList(this.title, items)
+    }
+
+    updateItem(index: number, ...updates: Array<FieldUpdate>): TodoList {
+        const items = this.items.slice()
+        items[index] = items[index].applyUpdates(...updates)
+
+        return new TodoList(this.title, items)
+    }
 }
+
+type FieldUpdate = [keyof TodoItem, any]
 
 class TodoItem {
     constructor(public summary: string, public complete: boolean = false, public dueDate: Date | null = null, public editing: boolean = false) { }
+
+    applyUpdates(...updates: Array<FieldUpdate>): TodoItem {
+        const item = new TodoItem(this.summary, this.complete, this.dueDate, this.editing)
+        updates.forEach(u => (item as any)[u[0]] = u[1])        
+        return item
+    }
 }
 
 // -- Messages
@@ -122,24 +149,22 @@ function item_view(model: TodoItem, idx: number, context: wecco.AppContext<Messa
     </div>`
 }
 
+// Controller
+
 const store = new Store("wecco.examples.todos")
 
 function update(model: TodoList, message: Message): TodoList {
     switch (message.command) {
         case "add":
-            model.items.push(new TodoItem("", false, null, true))
+            model = model.addItem(new TodoItem("", false, null, true))
             break
         
-        case "update": {
-            const item = model.items[message.index]
-            item.editing = false;
-            (item as any)[message.field] = message.value            
+        case "update":
+            model = model.updateItem(message.index, [message.field, message.value], ["editing", false])
             break
-        }
-
+        
         case "delete":
-            model.items.splice(message.index, 1)
-            break
+            model = model.deleteItem(message.index)    
     }
 
     store.save(model)
