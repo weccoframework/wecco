@@ -1,5 +1,9 @@
 # Changelog
 
+# Version 0.16.1
+
+* fix type signature of app updater to include `NoModelChange`
+
 # Version 0.16.0
 
 * introduce `NoModelChange` value to skip rendering of an app
