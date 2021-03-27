@@ -20,6 +20,11 @@ import { ElementSelector, resolve } from "./dom"
 import { updateElement, ElementUpdate } from "./update"
 
 /**
+ * A sentinel value representing the updater's decision _not_ to update the model and skip the re-rendering cycle.
+ */
+export const NoModelChange = {}
+
+/**
  * A function that can initialize a model.
  * This type is generic on the produced model's type.
  */
@@ -30,7 +35,7 @@ export type ModelInitializer<M> = () => M
  * The function may produce a new model or modify the given model in place.
  * This type is generic on the model's and message's type.
  */
-export type Updater<MODEL, MESSAGE> = (model: MODEL, message: MESSAGE, context: AppContext<MESSAGE>) => MODEL
+export type Updater<MODEL, MESSAGE> = (model: MODEL, message: MESSAGE, context: AppContext<MESSAGE>) => MODEL | typeof NoModelChange
 
 /**
  * Interface for a context object which can be used to control an app by sending messages.
@@ -53,11 +58,6 @@ export function app<MODEL, MESSAGE>(modelInitialier: ModelInitializer<MODEL>, up
     return new AppContextImpl(modelInitialier(), updater, view, resolve(mountPoint))
 }
 
-/**
- * A sentinel value representing the updater's decision _not_ to update the model and skip the re-rendering cycle.
- */
-export const NoModelChange = {}
-
 class AppContextImpl<MODEL, MESSAGE> implements AppContext<MESSAGE> {
     constructor(private model: MODEL, private updater: Updater<MODEL, MESSAGE>, private view: View<MODEL, MESSAGE>, private mointPoint: Element) {
         updateElement(this.mointPoint, this.view(this.model, this))
@@ -69,7 +69,7 @@ class AppContextImpl<MODEL, MESSAGE> implements AppContext<MESSAGE> {
             return
         } 
         
-        this.model = model
+        this.model = model as MODEL
         updateElement(this.mointPoint, this.view(this.model, this))
     }
 }
