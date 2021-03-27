@@ -1,5 +1,9 @@
 # Changelog
 
+# Version 0.16.2
+
+* only update attribute value when bound value changes
+
 # Version 0.16.1
 
 * fix type signature of app updater to include `NoModelChange`
