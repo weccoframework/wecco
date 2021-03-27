@@ -19,10 +19,7 @@
 import { expect } from "iko"
 import { ElementUpdate, updateElement } from "../../src/update"
 import { html } from "../../src/html"
-
-function removeMarkerComments (html: string): string {
-    return html.replace(/<!---->/g, "")
-}
+import { removeMarkerComments } from "./testutils"
 
 describe("html.ts", async () => {
     beforeEach(() => {

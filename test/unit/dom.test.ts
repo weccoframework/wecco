@@ -17,9 +17,7 @@
  */
 
 import { expect } from "iko"
-import { resolve, removeAllChildren } from "../../src/dom"
-import { updateElement } from "../../src/update"
-import { html } from "../../src/html"
+import { removeAllChildren, resolve } from "../../src/dom"
 
 describe("dom.ts", () => {
     afterEach(() => {

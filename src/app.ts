@@ -53,21 +53,23 @@ export function app<MODEL, MESSAGE>(modelInitialier: ModelInitializer<MODEL>, up
     return new AppContextImpl(modelInitialier(), updater, view, resolve(mountPoint))
 }
 
-class AppContextImpl<MODEL, MESSAGE> implements AppContext<MESSAGE> {
-    private renderUpdateTimeout: number | null = null
+/**
+ * A sentinel value representing the updater's decision _not_ to update the model and skip the re-rendering cycle.
+ */
+export const NoModelChange = {}
 
+class AppContextImpl<MODEL, MESSAGE> implements AppContext<MESSAGE> {
     constructor(private model: MODEL, private updater: Updater<MODEL, MESSAGE>, private view: View<MODEL, MESSAGE>, private mointPoint: Element) {
         updateElement(this.mointPoint, this.view(this.model, this))
     }
 
     emit(message: MESSAGE) {
-        this.model = this.updater(this.model, message, this)
-
-        if (this.renderUpdateTimeout === null) {
-            this.renderUpdateTimeout = window.setTimeout(() => {
-                this.renderUpdateTimeout = null
-                updateElement(this.mointPoint, this.view(this.model, this))
-            }, 5)
-        }
+        const model = this.updater(this.model, message, this)
+        if (model == NoModelChange) {
+            return
+        } 
+        
+        this.model = model
+        updateElement(this.mointPoint, this.view(this.model, this))
     }
 }
