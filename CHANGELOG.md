@@ -1,5 +1,9 @@
 # Changelog
 
+# Version 0.16.0
+
+* introduce `NoModelChange` value to skip rendering of an app
+
 # Version 0.15.3
 
 * fix handling of nested html tagged strings with toplevel mixed content
