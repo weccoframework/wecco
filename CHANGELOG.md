@@ -1,5 +1,9 @@
 # Changelog
 
+# Version 0.15.3
+
+* fix handling of nested html tagged strings with toplevel mixed content
+
 # Version 0.15.2
 
 * fix null reference error when updating node bindings
