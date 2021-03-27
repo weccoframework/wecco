@@ -277,7 +277,7 @@ function generateHtml(strings: TemplateStringsArray) {
  
          // Create a start marker comment and insert it
          // directly before the end marker
-         this.startMarker = node.parentElement.insertBefore(createMarker(), node)
+         this.startMarker = node.parentNode.insertBefore(createMarker(), node)
      }
  
      applyData(data: ReadonlyArray<any>): void {
@@ -342,7 +342,7 @@ function generateHtml(strings: TemplateStringsArray) {
  
      private createBindingsFromIterable(dataArray: Array<any>, startIndex = 0) {
          for (let idx = startIndex; idx < dataArray.length; ++idx) {
-             const endMarker = this.endMarker.parentElement.insertBefore(createMarker(), this.endMarker)
+             const endMarker = this.endMarker.parentNode.insertBefore(createMarker(), this.endMarker)
              const binding = new NodeBinding(this.nodeIndex, idx)
              binding.bind(endMarker, this.nodeIndex)
              this.boundData.push(binding)
@@ -371,7 +371,7 @@ function generateHtml(strings: TemplateStringsArray) {
          // all nodes before node.
          const fragment = document.createDocumentFragment()
          updateElement(fragment, update, false)
-         this.endMarker.parentElement.insertBefore(fragment, this.endMarker)
+         this.endMarker.parentNode.insertBefore(fragment, this.endMarker)
  
          this.boundData = update
      }
@@ -389,13 +389,13 @@ function generateHtml(strings: TemplateStringsArray) {
         // Clear the insert spot and insert a fresh text node.
 
         this.clear()
-        this.node = this.endMarker.parentElement.insertBefore(document.createTextNode(text), this.endMarker)
+        this.node = this.endMarker.parentNode.insertBefore(document.createTextNode(text), this.endMarker)
      }
  
      private clear(): void {
          const firstNodeToRemove = this.startMarker
              ? this.startMarker.nextSibling
-             : this.node.parentElement.firstChild
+             : this.node.parentNode.firstChild
  
          removeNodes(firstNodeToRemove, this.endMarker ?? this.node)
      }

@@ -72,6 +72,13 @@ describe("html.ts", async () => {
                 expect(removeMarkerComments(document.body.innerHTML)).toBe(`<p>Hello, world!</p>`)
             })
     
+            it("should create html with nested mixed content", () => {
+                const p = (content: ElementUpdate) => html`<p>${content}</p>`
+
+                updateElement(document.body, p(html`<em>spam</em> and ${"eggs"}`))
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<p><em>spam</em> and eggs</p>`)
+            })
+
             it("should create html w/ placeholder for whole attribute value", () => {
                 const classes = "small hero"
     
@@ -153,6 +160,23 @@ describe("html.ts", async () => {
                 updateElement(document.body, html`<ul>${"abc".split("").map(s => html`<li>${s}</li>`)}</ul>`)
 
                 expect(removeMarkerComments(document.body.innerHTML)).toBe(`<ul><li>a</li><li>b</li><li>c</li></ul>`)
+            })
+
+            it("should render nested iterables", () => {
+                const li = (content: ElementUpdate) => html`<li>${content}</li>`
+                const ul = (items: Array<ElementUpdate>) => html`<ul>${items}</ul>`
+
+                updateElement(document.body, ul([li("foo"), li("bar"), li(ul([li("spam"), li("eggs")]))]))
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<ul><li>foo</li><li>bar</li><li><ul><li>spam</li><li>eggs</li></ul></li></ul>`)
+            })
+
+            it("should render nested iterables with mixed content", () => {
+                const li = (content: ElementUpdate) => html`<li>${content}</li>`
+                const ul = (items: Array<ElementUpdate>) => html`<ul>${items}</ul>`
+
+                updateElement(document.body, ul([li(html`<em>spam</em> and ${"eggs"}`)]))
+                // updateElement(document.body, ul([li("foo"), li("bar"), li(ul([li(html`<em>spam</em> and ${"eggs"}`), li("eggs")]))]))
+                // expect(removeMarkerComments(document.body.innerHTML)).toBe(`<ul><li>foo</li><li>bar</li><li><ul><li>spam</li><li>eggs</li></ul></li></ul>`)
             })
         })
 

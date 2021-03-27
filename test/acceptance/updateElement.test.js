@@ -64,8 +64,20 @@ describe("updateElement", () => {
         ]))
         await sleep()
 
-        let text = await fixture.page.$eval("#app", e => e.innerHTML)
+        const text = await fixture.page.$eval("#app", e => e.innerHTML)
         expect(removeMarkerComments(text)).toBe(`<p>hello, world</p>hello, world again`)
+    })
+
+    it("should render nested iterables", async () => {
+        await fixture.page.evaluate(() => {
+            const li = (content) => wecco.html`<li>${content}</li>`
+            const ul = (items) => wecco.html`<ul>${items}</ul>`
+    
+            wecco.updateElement("#app", ul([li("foo"), li("bar"), li(ul([li("spam"), li("eggs")]))]))
+        })
+
+        const text = await fixture.page.$eval("#app", e => e.innerHTML)
+        expect(removeMarkerComments(text)).toBe(`<ul><li>foo</li><li>bar</li><li><ul><li>spam</li><li>eggs</li></ul></li></ul>`)
     })
 
     describe("update event", () => {
