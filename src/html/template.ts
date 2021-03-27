@@ -406,6 +406,7 @@ function generateHtml(strings: TemplateStringsArray) {
   */
  class AttributeBinding extends BindingBase {
      private element: Element
+     private boundAttributeValue: string | undefined
  
      constructor(nodeIndex: number, private readonly attributeName: string, private readonly valueInstructions: Array<string | number>) {
          super(nodeIndex)
@@ -421,7 +422,11 @@ function generateHtml(strings: TemplateStringsArray) {
      }
  
      applyData(data: ReadonlyArray<any>): void {
-         this.element.setAttribute(this.attributeName, this.valueInstructions.map(vi => (typeof vi === "string") ? vi : data[vi]).join(""))
+         const attributeValue = this.valueInstructions.map(vi => (typeof vi === "string") ? vi : data[vi]).join("")
+         if (attributeValue !== this.boundAttributeValue) {
+             this.boundAttributeValue = attributeValue
+             this.element.setAttribute(this.attributeName, attributeValue)
+         }
      }
  }
  
