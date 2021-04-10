@@ -318,6 +318,39 @@ describe("html.ts", async () => {
                 updateElement(document.body, tpl(html`<em>${"world"}</em>`))
                 expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello, <em>world</em></p>")
             })
+
+            it("should remove rendered html when re-rendering empty string", () => {
+                updateElement(document.body, html`<p>hello, world</p>`)
+                expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello, world</p>")
+
+                updateElement(document.body, "")
+                expect(removeMarkerComments(document.body.innerHTML)).toBe("")
+            })
+
+            it("should remove rendered html when re-rendering empty string as nested template", () => {
+                const nested = () => html`<p>world</p>`
+                const tpl = (flag: boolean) => html`<p>hello</p> ${flag ? nested() : ""}`
+
+                updateElement(document.body, tpl(true))
+                expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello</p> <p>world</p>")
+
+                updateElement(document.body, tpl(false))
+                expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello</p> ")
+            })
+
+            it("should remove rendered html when re-rendering string with template and string again as nested template", () => {
+                const nested = () => html`<p>world</p>`
+                const tpl = (flag: boolean) => html`<p>hello</p> ${flag ? nested() : ""}`
+
+                updateElement(document.body, tpl(false))
+                expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello</p> ")
+
+                updateElement(document.body, tpl(true))
+                expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello</p> <p>world</p>")
+
+                updateElement(document.body, tpl(false))
+                expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello</p> ")
+            })
         })
     })
 })

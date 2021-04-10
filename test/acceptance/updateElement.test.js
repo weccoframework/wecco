@@ -151,5 +151,23 @@ describe("updateElement", () => {
             testMarker = await fixture.page.evaluate(() => document.querySelector("#app div").getAttribute("data-test-marker"))
             expect(testMarker).toBe("1")
         })
+
+        it("should remove rendered html when re-rendering empty string as nested template", async () => {
+            await fixture.page.evaluate(() => {
+                window.tpl = msg => wecco.html`<p>hello, ${msg ? wecco.html`<em>${msg}</em>` : "world"}</p>`
+                wecco.updateElement("#app", tpl("foo"))
+            })
+
+            let text = await fixture.page.evaluate(() => document.querySelector("#app").innerHTML)
+            expect(removeMarkerComments(text)).toBe("<p>hello, <em>foo</em></p>")
+
+            await fixture.page.evaluate(() => {
+                wecco.updateElement("#app", tpl())
+            })
+
+            text = await fixture.page.evaluate(() => document.querySelector("#app").innerHTML)
+            expect(removeMarkerComments(text)).toBe("<p>hello, world</p>")
+        })
+
     })
 })

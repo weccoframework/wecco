@@ -376,20 +376,19 @@ function generateHtml(strings: TemplateStringsArray) {
          this.boundData = update
      }
  
-     private applyText(text: string) {
-         this.boundData = text
-
-         if (this.node.nodeType === Node.TEXT_NODE) {
+     private applyText(text: string) {         
+         if (this.endMarker.previousSibling.nodeType === Node.TEXT_NODE) {
             // Got text element from previous render call. Reuse that 
-            (this.node as Text).data = text
+            (this.endMarker.previousSibling as Text).data = text
+            this.boundData = text
             return
         }
 
         // Got some other content (i.e. a nested HtmlTemplate).
         // Clear the insert spot and insert a fresh text node.
-
         this.clear()
         this.node = this.endMarker.parentNode.insertBefore(document.createTextNode(text), this.endMarker)
+        this.boundData = text
      }
  
      private clear(): void {
