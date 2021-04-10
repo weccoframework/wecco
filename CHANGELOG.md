@@ -1,5 +1,9 @@
 # Changelog
 
+# Version 0.16.3
+
+* fixed an issue when re-rendering a template containing a placeholder with text, nested template and text again
+
 # Version 0.16.2
 
 * only update attribute value when bound value changes
