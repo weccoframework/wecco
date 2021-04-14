@@ -1,5 +1,9 @@
 # Changelog
 
+# Version 0.17.0
+
+* add support for asynchronous apps (model creation and updates)
+
 # Version 0.16.3
 
 * fixed an issue when re-rendering a template containing a placeholder with text, nested template and text again

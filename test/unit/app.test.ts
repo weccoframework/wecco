@@ -34,27 +34,70 @@ describe("app.ts", () => {
         return html`<p>${m}</p>`
     }
 
-    const update = (m: Model, msg: Message, ctx: AppContext<Model>): Model => {
-        return msg
-    }
-
-    it("should render initial model", () => {
-        app(() => "hello, world", update, view, document.body)
-
-        expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello, world</p>")
+    describe("synchronous update", () => {
+        const update = (m: Model, msg: Message, ctx: AppContext<Model>): Model => {
+            return msg
+        }
+    
+        it("should render initial model", () => {
+            app(() => "hello, world", update, view, document.body)
+    
+            expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello, world</p>")
+        })
+    
+        it("should apply update", () => {
+            const ctx = app(() => "hello, world", update, view, document.body)
+            ctx.emit("hello, update")
+    
+            expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello, update</p>")
+        })
+    
+        it("should change nothing when update returns no model change sentinel value", () => {        
+            const ctx = app(() => "hello, world", (m: Model, msg: Message, ctx: AppContext<Model>) => NoModelChange, view, document.body)
+            ctx.emit("hello, update")
+    
+            expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello, world</p>")
+        })
     })
 
-    it("should apply update", () => {
-        const ctx = app(() => "hello, world", update, view, document.body)
-        ctx.emit("hello, update")
+    describe("asynchronous update", () => {
+        const update = (m: Model, msg: Message, ctx: AppContext<Model>): Promise<Model> => {
+            return Promise.resolve(msg)
+        }
+    
+        it("should render initial model", () => {
+            app(() => Promise.resolve("hello, world"), update, view, document.body)
 
-        expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello, update</p>")
-    })
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello, world</p>")
+                    resolve(null)
+                }, 1)
+            })        
+        })
+    
+        it("should apply update", () => {
+            const ctx = app(() => Promise.resolve("hello, world"), update, view, document.body)
+            ctx.emit("hello, update")
 
-    it("should change nothing when update returns no model change sentinel value", () => {        
-        const ctx = app(() => "hello, world", (m: Model, msg: Message, ctx: AppContext<Model>) => NoModelChange, view, document.body)
-        ctx.emit("hello, update")
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello, update</p>")
+                    resolve(null)
+                }, 1)
+            })
+        })
+    
+        it("should change nothing when update returns no model change sentinel value", () => {        
+            const ctx = app(() => Promise.resolve("hello, world"), (m: Model, msg: Message, ctx: AppContext<Model>) => Promise.resolve(NoModelChange), view, document.body)
+            ctx.emit("hello, update")
 
-        expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello, world</p>")
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello, world</p>")
+                    resolve(null)
+                }, 1)
+            })
+        })
     })
 })
