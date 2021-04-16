@@ -127,6 +127,51 @@ describe("html.ts", async () => {
                 document.querySelector("a").dispatchEvent(new MouseEvent("click"))
                 expect(clicked).toBe(true)
             })
+
+            it("should create html w/ event placeholder that allows event to bubble up", () => {
+                let eventTargets: Array<string> = []
+                const callback = (label: string) => { eventTargets.push(label) }
+    
+                const template = (html`<div @click=${callback.bind(null, "div")}><a @click=${callback.bind(null, "a")}>Hello, world</a></div>`)
+                updateElement(document.body, template)
+    
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<div><a>Hello, world</a></div>`)
+    
+                document.querySelector("a").dispatchEvent(new MouseEvent("click", {
+                    bubbles: true,
+                }))
+                expect(eventTargets).toBeEqual(["a", "div"])
+            })
+
+            it("should create html w/ event placeholder with capturing", () => {
+                let eventTargets: Array<string> = []
+                const callback = (label: string) => { eventTargets.push(label) }
+    
+                const template = (html`<div @click+capture=${callback.bind(null, "div")}><a @click=${callback.bind(null, "a")}>Hello, world</a></div>`)
+                updateElement(document.body, template)
+    
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<div><a>Hello, world</a></div>`)
+    
+                document.querySelector("a").dispatchEvent(new MouseEvent("click", {
+                    bubbles: true,
+                }))
+                expect(eventTargets).toBeEqual(["div", "a"])
+            })
+
+            it("should create html w/ event placeholder that prevents defaults and stops propagation", () => {
+                let eventTargets: Array<string> = []
+                const callback = (label: string) => { eventTargets.push(label) }
+    
+                const template = (html`<div @click=${callback.bind(null, "div")}><a @click+stopPropagation=${callback.bind(null, "a")}>Hello, world</a></div>`)
+                updateElement(document.body, template)
+    
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<div><a>Hello, world</a></div>`)
+    
+                document.querySelector("a").dispatchEvent(new MouseEvent("click", {
+                    bubbles: true,
+                }))
+                expect(eventTargets).toBeEqual(["a"])
+            })
     
             it("should create html w/ update placeholder", () => {
                 let element: Element | null = null
