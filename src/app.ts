@@ -92,9 +92,9 @@ class AppContextImpl<MODEL, MESSAGE> implements AppContext<MESSAGE> {
 
     emit(message: MESSAGE) {
         const result = this.updater(this.model, message, this)
-        if (result instanceof Promise) {
+        if (isPromise<MODEL>(result)) {
             result
-                .then(this.applyModel.bind(this))
+                .then(m => this.applyModel(m))
                 .catch(console.error)
             return
         }
@@ -114,4 +114,8 @@ class AppContextImpl<MODEL, MESSAGE> implements AppContext<MESSAGE> {
     private performUpdate() {
         updateElement(this.mountPoint, this.view(this.model, this))
     }
+}
+
+function isPromise<MODEL>(m: ModelResult<MODEL>): m is Promise<MODEL> {
+    return m instanceof Promise
 }
