@@ -1,5 +1,9 @@
 # Changelog
 
+# Version 0.18.0
+
+* add support for options passed to `addEventListener`
+
 # Version 0.17.0
 
 * add support for asynchronous apps (model creation and updates)
