@@ -1,5 +1,9 @@
 # Changelog
 
+# Version 0.19.0
+
+* add support for setting Javascript properties on HTML elements created with `html`-tagged strings
+
 # Version 0.18.0
 
 * add support for options passed to `addEventListener`
