@@ -518,7 +518,31 @@ class EventListenerAttributeBinding extends SingleDataIndexBindingBase {
             }
         }
     }
+}
 
+/**
+ * An implementation of `Binding` which updates a DOM elements
+ * javascript property, i.e. `value`.
+ */
+class PropertyBinding extends SingleDataIndexBindingBase {
+    private element: Element
+
+    constructor(nodeIndex: number, private readonly propertyName: string, dataIndex: number) {
+        super(nodeIndex, dataIndex)
+    }
+
+    protected bindNode(node: Node): void {
+        if (node.nodeType !== Node.ELEMENT_NODE) {
+            console.error(`Expected element to set property ${this.propertyName} but got ${node}`)
+            throw DomInconsistencyError
+        }
+        this.element = node as Element
+        super.bindNode(node)
+    }
+
+    protected applyChangedData(dataItem: any): void {
+        (this.element as any)[this.propertyName] = dataItem
+    }
 }
 
 /**
@@ -592,6 +616,24 @@ export function determineBindings(root: Node): Array<Binding> {
                     }
 
                     bindings.push(new BooleanAttributeBinding(nodeIndex, name.substr(1), extractPlaceholderId(parts[0])))
+                    continue
+                }
+
+                if (name.startsWith(".")) {
+                    // A . starts a property binding.
+                    // A property binding must use a single marker as its value as the value
+                    // is only used via javascript.
+                    // Otherwise it is considered a syntax error. In any case
+                    // the attribute is removed from the element as it is
+                    // syntactically not correct.
+                    element.removeAttribute(name)
+
+                    if (parts.length !== 1 || !isPlaceholder(parts[0])) {
+                        console.error(`Got syntax error using property ${name}: Only single placeholder is allowed as value. Found at ${element}.`)
+                        continue
+                    }
+
+                    bindings.push(new PropertyBinding(nodeIndex, name.substr(1), extractPlaceholderId(parts[0])))
                     continue
                 }
 

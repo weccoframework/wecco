@@ -64,5 +64,5 @@ export const DatePicker = wecco.define("date-picker", (data: DatePickerData, con
         inputValue = date.toISOString().substr(0, 10)
     }
 
-    return wecco.html`<input type="date" autofocus @change=${onChange} @blur=${onChange} value=${inputValue} style="display: inline-block;">`
+    return wecco.html`<input type="date" autofocus @change=${onChange} @blur=${onChange} .value=${inputValue} style="display: inline-block;">`
 }, "value", "message")

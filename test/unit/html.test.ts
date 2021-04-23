@@ -27,7 +27,7 @@ describe("html.ts", async () => {
     })
 
     describe("html", () => {
-        describe("primitive values", () => {
+        describe("string content", () => {
             it("should create html from static literal", () => {
                 updateElement(document.body, html`<p>hello, world!</p>`)
     
@@ -68,14 +68,18 @@ describe("html.ts", async () => {
     
                 expect(removeMarkerComments(document.body.innerHTML)).toBe(`<p>Hello, world!</p>`)
             })
-    
+        })
+
+        describe("nested html", () => {
             it("should create html with nested mixed content", () => {
                 const p = (content: ElementUpdate) => html`<p>${content}</p>`
 
                 updateElement(document.body, p(html`<em>spam</em> and ${"eggs"}`))
                 expect(removeMarkerComments(document.body.innerHTML)).toBe(`<p><em>spam</em> and eggs</p>`)
             })
+        })
 
+        describe("attributes", () => {
             it("should create html w/ placeholder for whole attribute value", () => {
                 const classes = "small hero"
     
@@ -114,7 +118,24 @@ describe("html.ts", async () => {
     
                 expect(removeMarkerComments(document.body.innerHTML)).toBe(`<a disabled="disabled">hello, world!</a>`)
             })
-    
+        })
+
+        describe("properties", () => {
+            it("should create input with value attribute", () => {
+                updateElement(document.body, html`<input type="text" .value=${"hello, world"}>`)
+
+                expect(removeMarkerComments(document.querySelector("input").value)).toBe("hello, world")
+            })
+
+            it("should create and update input with value attribute", () => {
+                updateElement(document.body, html`<input type="text" .value=${"hello, world"}>`)
+                updateElement(document.body, html`<input type="text" .value=${"hello, world again"}>`)
+
+                expect(removeMarkerComments(document.querySelector("input").value)).toBe("hello, world again")
+            })
+        })
+
+        describe("events", () => {
             it("should create html w/ event placeholder", () => {
                 let clicked = false
                 const callback = () => { clicked = true }

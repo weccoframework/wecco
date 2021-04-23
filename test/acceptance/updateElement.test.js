@@ -80,6 +80,36 @@ describe("updateElement", () => {
         expect(removeMarkerComments(text)).toBe(`<ul><li>foo</li><li>bar</li><li><ul><li>spam</li><li>eggs</li></ul></li></ul>`)
     })
 
+    describe("forms", () => {
+        it("should render value binding of input element", async () => {
+            await fixture.page.evaluate(() => wecco.updateElement("#app", wecco.html`<input type="text" .value=${"hello, world"}>`))
+            await sleep()
+    
+            const text = await fixture.page.$eval("#app input", e => e.value)
+            expect(text).toBe("hello, world")
+        })        
+
+        it("should update value binding of input element", async () => {
+            await fixture.page.evaluate(() => {
+                window.tpl = (value) => wecco.html`<input type="text" .value=${value}>`
+                wecco.updateElement("#app", tpl("hello, world"))
+            })
+            await sleep()
+
+            let text = await fixture.page.$eval("#app input", e => e.value)
+            expect(text).toBe("hello, world")
+
+            await fixture.page.evaluate(() => {
+                wecco.updateElement("#app", tpl("hello, world again"))
+            })
+
+            await sleep()
+
+            text = await fixture.page.$eval("#app input", e => e.value)
+            expect(text).toBe("hello, world again")
+        })        
+    })
+
     describe("update event", () => {
         it("should invoke @update only once per update cycle", async () => {
             await fixture.page.evaluate(() => {
