@@ -70,15 +70,6 @@ describe("html.ts", async () => {
             })
         })
 
-        describe("nested html", () => {
-            it("should create html with nested mixed content", () => {
-                const p = (content: ElementUpdate) => html`<p>${content}</p>`
-
-                updateElement(document.body, p(html`<em>spam</em> and ${"eggs"}`))
-                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<p><em>spam</em> and eggs</p>`)
-            })
-        })
-
         describe("attributes", () => {
             it("should create html w/ placeholder for whole attribute value", () => {
                 const classes = "small hero"
@@ -237,13 +228,21 @@ describe("html.ts", async () => {
                 const li = (content: ElementUpdate) => html`<li>${content}</li>`
                 const ul = (items: Array<ElementUpdate>) => html`<ul>${items}</ul>`
 
-                updateElement(document.body, ul([li(html`<em>spam</em> and ${"eggs"}`)]))
-                // updateElement(document.body, ul([li("foo"), li("bar"), li(ul([li(html`<em>spam</em> and ${"eggs"}`), li("eggs")]))]))
-                // expect(removeMarkerComments(document.body.innerHTML)).toBe(`<ul><li>foo</li><li>bar</li><li><ul><li>spam</li><li>eggs</li></ul></li></ul>`)
+                updateElement(document.body, ul([li("foo"), li("bar"), li(ul([li(html`<em>spam</em> and ${"eggs"}`), li("eggs")]))]))
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<ul><li>foo</li><li>bar</li><li><ul><li><em>spam</em> and eggs</li><li>eggs</li></ul></li></ul>`)
             })
         })
 
         describe("using nested tagged templates", () => {
+            describe("nested tagged html", () => {
+                it("should create html with nested mixed content", () => {
+                    const p = (content: ElementUpdate) => html`<p>${content}</p>`
+    
+                    updateElement(document.body, p(html`<em>spam</em> and ${"eggs"}`))
+                    expect(removeMarkerComments(document.body.innerHTML)).toBe(`<p><em>spam</em> and eggs</p>`)
+                })
+            })
+
             it("should create html w/ placeholder containing nested html", () => {
                 updateElement(document.body, html`<p>${html`<em>hello, world!</em>`}</p>`)
     
