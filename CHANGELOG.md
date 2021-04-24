@@ -1,5 +1,9 @@
 # Changelog
 
+# Version 0.20.0
+
+* add support for omitting attributes if a placeholder returns `undefined` or `null`
+
 # Version 0.19.0
 
 * add support for setting Javascript properties on HTML elements created with `html`-tagged strings
