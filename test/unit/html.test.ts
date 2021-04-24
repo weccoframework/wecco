@@ -109,6 +109,25 @@ describe("html.ts", async () => {
     
                 expect(removeMarkerComments(document.body.innerHTML)).toBe(`<a disabled="disabled">hello, world!</a>`)
             })
+
+            describe("attribute directives", () => {
+                describe("omit empty", () => {
+                    it("should remove attribute when single placeholder returns undefined value", () => {
+                        updateElement(document.body, html`<p id+omitempty="foo ${undefined}"></p>`)
+                        expect(removeMarkerComments(document.body.innerHTML)).toBe(`<p></p>`)
+                    })
+
+                    it("should remove attribute when at least one placeholder returns null value", () => {
+                        updateElement(document.body, html`<p id+omitempty="foo ${null} ${"bar"}"></p>`)
+                        expect(removeMarkerComments(document.body.innerHTML)).toBe(`<p></p>`)
+                    })
+
+                    it("should set attribute when all placeholder return truthy value", () => {
+                        updateElement(document.body, html`<p id+omitempty="foo ${"spam"} ${"bar"}"></p>`)
+                        expect(removeMarkerComments(document.body.innerHTML)).toBe(`<p id="foo spam bar"></p>`)
+                    })
+                })
+            })
         })
 
         describe("properties", () => {

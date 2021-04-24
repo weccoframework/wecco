@@ -401,13 +401,20 @@ class NodeBinding extends BindingBase {
 }
 
 /**
+ * Defines the directives applicable for attribute values.
+ */
+interface AttributeBindingDirectives {
+    omitEmpty?: boolean
+}
+
+/**
  * An implementation of `Binding` which modifies a single attribute of a DOM `Element`.
  */
 class AttributeBinding extends BindingBase {
     private element: Element
     private boundAttributeValue: string | undefined
 
-    constructor(nodeIndex: number, private readonly attributeName: string, private readonly valueInstructions: Array<string | number>) {
+    constructor(nodeIndex: number, private readonly attributeName: string, private readonly valueInstructions: Array<string | number>, private readonly directives: AttributeBindingDirectives) {
         super(nodeIndex)
     }
 
@@ -421,10 +428,49 @@ class AttributeBinding extends BindingBase {
     }
 
     applyData(data: ReadonlyArray<any>): void {
-        const attributeValue = this.valueInstructions.map(vi => (typeof vi === "string") ? vi : data[vi]).join("")
+        let gotEmptyValue = false
+        const attributeValue = this.valueInstructions.map(vi => {
+            if (typeof vi === "string") {
+                // If value instruction is a string it is a static
+                // string part and used "as is".
+                return vi
+            }
+
+            // Otherwise it must be a number and refers to a
+            // data item.
+            let d = data[vi]
+            
+            if (typeof d === "undefined" || d === null) {
+                // If the data item is undefined or null we
+                // set the empty value flag. 
+                gotEmptyValue = true
+            }
+
+            // No further conversion is needed here, as the elements
+            // are joined and Array.prototype.join handles the string 
+            // conversion for every array item as well as replacing
+            // undefined and null with an empty string.
+            return d
+        }).join("")
+
+        if (gotEmptyValue && this.directives.omitEmpty) {
+            // We got at least on empty value and the omitEmpty
+            // directive has been set. Remove the attribute.
+            this.element.removeAttribute(this.attributeName)
+            // Use undefined as a marker for the cached value.
+            this.boundAttributeValue = undefined
+            return
+        }
+
+        // Either the attribute's value should be set no matter if
+        // an empty value was used or no empty value has been produced.
+
         if (attributeValue !== this.boundAttributeValue) {
-            this.boundAttributeValue = attributeValue
+            // The attribute's value is different compared to the one used
+            // before. Update the element's attribute...
             this.element.setAttribute(this.attributeName, attributeValue)
+            // ... and remember the attribute's value for the next render cycle.
+            this.boundAttributeValue = attributeValue
         }
     }
 }
@@ -714,8 +760,20 @@ export function determineBindings(root: Node): Array<Binding> {
                     return part
                 })
 
+                const directives: AttributeBindingDirectives = {}
+                const [attributeName, ...directive] = name.split("+")
+                directive.forEach(optName => {
+                    switch (optName.toLocaleLowerCase()) {
+                        case "omitempty":
+                            directives.omitEmpty = true
+                            break
+                        default:
+                            console.warn(`unrecognized attribute binding directive: "${optName}"`)
+                    }
+                })                
+
                 // Finally, create the binding and append it to the list of bindings.
-                bindings.push(new AttributeBinding(nodeIndex, name, valueInstructions))
+                bindings.push(new AttributeBinding(nodeIndex, attributeName, valueInstructions, directives))
             }
         }
     }
