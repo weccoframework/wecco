@@ -457,7 +457,13 @@ class BooleanAttributeBinding extends SingleDataIndexBindingBase {
     }
 }
 
-export interface EventListenerAttributeOptions extends AddEventListenerOptions {
+/**
+ * Defines the directives to apply to a registered event listeners. The directives
+ * extend `AddEventListenerOptions` and passes these values to the `addEventListener`
+ * method. The remaining directives are implemented by wrapping the event listener
+ * prio to registering.
+ */
+export interface EventListenerAttributeDirectives extends AddEventListenerOptions {
     stopPropagation?: boolean
     stopImmediatePropagation?: boolean
     preventDefault?: boolean
@@ -470,7 +476,7 @@ class EventListenerAttributeBinding extends SingleDataIndexBindingBase {
     private element: Element
     private boundListener: EventListenerOrEventListenerObject
 
-    constructor(nodeIndex: number, private readonly eventName: string, dataIndex: number, private readonly options: EventListenerAttributeOptions) {
+    constructor(nodeIndex: number, private readonly eventName: string, dataIndex: number, private readonly directives: EventListenerAttributeDirectives) {
         super(nodeIndex, dataIndex)
     }
 
@@ -490,24 +496,24 @@ class EventListenerAttributeBinding extends SingleDataIndexBindingBase {
 
         this.boundListener = this.createListener(dataItem)
 
-        this.element.addEventListener(this.eventName, this.boundListener, this.options)
+        this.element.addEventListener(this.eventName, this.boundListener, this.directives)
     }
 
     private createListener(dataItem: EventListenerOrEventListenerObject): EventListenerOrEventListenerObject {
-        if (!this.options.stopPropagation && !this.options.stopImmediatePropagation && !this.options.preventDefault) {
+        if (!this.directives.stopPropagation && !this.directives.stopImmediatePropagation && !this.directives.preventDefault) {
             return dataItem
         }
 
         return (e: Event) => {
-            if (this.options.stopPropagation) {
+            if (this.directives.stopPropagation) {
                 e.stopPropagation()
             }
 
-            if (this.options.stopImmediatePropagation) {
+            if (this.directives.stopImmediatePropagation) {
                 e.stopImmediatePropagation()
             }
 
-            if (this.options.preventDefault) {
+            if (this.directives.preventDefault) {
                 e.preventDefault()
             }
 
@@ -628,6 +634,7 @@ export function determineBindings(root: Node): Array<Binding> {
                     // syntactically not correct.
                     element.removeAttribute(name)
 
+                    // Make sure the binding consist of a single placeholder.
                     if (parts.length !== 1 || !isPlaceholder(parts[0])) {
                         console.error(`Got syntax error using property ${name}: Only single placeholder is allowed as value. Found at ${element}.`)
                         continue
@@ -651,42 +658,55 @@ export function determineBindings(root: Node): Array<Binding> {
                         continue
                     }
 
-                    const opts: EventListenerAttributeOptions = {}
-                    const [eventName, ...optNames] = name.substr(1).split("+")
-                    optNames.forEach(optName => {
+                    const directives: EventListenerAttributeDirectives = {}
+                    const [eventName, ...directive] = name.substr(1).split("+")
+                    directive.forEach(optName => {
                         switch (optName.toLocaleLowerCase()) {
                             case "capture":
-                                opts.capture = true
+                                directives.capture = true
                                 break
                             case "passive":
-                                opts.passive = true
+                                directives.passive = true
                                 break
                             case "once":
-                                opts.once = true
+                                directives.once = true
                                 break
                             case "stoppropagation":
-                                opts.stopPropagation = true
+                                directives.stopPropagation = true
                                 break
                             case "stopimmediatepropagation":
-                                opts.stopImmediatePropagation = true
+                                directives.stopImmediatePropagation = true
                                 break
                             case "preventdefault":
-                                opts.preventDefault = true
+                                directives.preventDefault = true
                                 break
                             default:
-                                console.warn(`unrecognized event binding option: "${optName}"`)
+                                console.warn(`unrecognized event binding directive: "${optName}"`)
                         }
                     })
 
-                    bindings.push(new EventListenerAttributeBinding(nodeIndex, eventName, extractPlaceholderId(parts[0]), opts))
+                    bindings.push(new EventListenerAttributeBinding(nodeIndex, eventName, extractPlaceholderId(parts[0]), directives))
                     continue
                 }
 
+                // This fallback branch handles regular attributes.
+
+                // Check if the attribute contains a marker to be replaced later.
                 if (parts.length === 1 && !isPlaceholder(parts[0])) {
-                    // The single value part contains no marker. Nothing to do.
+                    // The single value part contains no marker. There is no need to create a binding.
+                    // We simply leave the attribute in place.
                     continue
                 }
 
+                // The attribute contains at least one placeholder. It may contain a mixture of 
+                // (more than one) placeholder and static text.
+
+                // Remove the attribute from the DOM element as it might be syntactically wrong. It
+                // will be added later when the binding is applied.
+                element.removeAttribute(name)
+
+                // Collect the value instructions to form the attribute's value. A value instruction
+                // is either the static text segment or an index number referring to a placeholder.
                 const valueInstructions: Array<string | number> = parts.map(part => {
                     if (isPlaceholder(part)) {
                         return extractPlaceholderId(part)
@@ -694,6 +714,7 @@ export function determineBindings(root: Node): Array<Binding> {
                     return part
                 })
 
+                // Finally, create the binding and append it to the list of bindings.
                 bindings.push(new AttributeBinding(nodeIndex, name, valueInstructions))
             }
         }
@@ -710,15 +731,13 @@ function createMarker(): Node {
     return document.createComment("")
 }
 
-function isMarker(node: Node): boolean {
-    if (node.nodeType !== Node.COMMENT_NODE) {
-        return false
-    }
-
-    const comment = node as Comment
-    return comment.data === "" || isPlaceholder(comment.data)
-}
-
+/**
+ * Type guard that checks if the given value implements the `Iterable` protocol.
+ * This is true for Arrays as well as values that have a special
+ * `Symbol.iterator` method.
+ * @param value the value
+ * @returns whether the given value is iterable
+ */
 function isIterable(value: unknown): value is Iterable<unknown> {
     return Array.isArray(value) ||
         !!(value && (value as any)[Symbol.iterator])
