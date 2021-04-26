@@ -6,13 +6,13 @@ export default {
 
     output: [
         {
-            file: `dist/wecco-core.umd.js`,
-            name: "wecco",
+            file: `dist/weccoframework-core.umd.js`,
+            name: "@weccoframework/core",
             format: "umd",
             sourcemap: true
         },
         {
-            file: `dist/wecco-core.es5.js`,
+            file: `dist/weccoframework-core.es5.js`,
             format: "es",
             sourcemap: true
         },
