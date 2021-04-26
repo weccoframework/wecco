@@ -1,5 +1,9 @@
 # Changelog
 
+# Version 0.21.0
+
+* updated package scope to `@weccoframework`
+
 # Version 0.20.0
 
 * add support for omitting attributes if a placeholder returns `undefined` or `null`
