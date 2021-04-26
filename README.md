@@ -85,7 +85,7 @@ The last line creates an instance of the component passing in an object that imp
 Here is the same count clicks example with a custom element:
 
 ```typescript
-import * as wecco from "@wecco/core"
+import * as wecco from "@weccoframework/core"
 
 interface CountClicks {
     count?: number

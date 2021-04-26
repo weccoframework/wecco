@@ -1,4 +1,4 @@
-import * as wecco from "@wecco/core"
+import * as wecco from "@weccoframework/core"
 
 /**
  * Defines the structure of data to be passed to a date picker instance.

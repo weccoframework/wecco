@@ -13,7 +13,7 @@
         "experimentalDecorators": true,
         "baseUrl": ".",
         "paths": {
-            "@wecco/core": [
+            "@weccoframework/core": [
                 "../index.ts"
             ],
         }

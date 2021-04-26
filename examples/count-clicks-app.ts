@@ -1,4 +1,4 @@
-import * as wecco from "@wecco/core"
+import * as wecco from "@weccoframework/core"
 
 class Model {
     constructor(public readonly count: number, public readonly explanation: string) {}
