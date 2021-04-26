@@ -1,5 +1,7 @@
 # wecco
 
+![CI Status][ci-img-url] [![Releases][release-img-url]][release-url]
+
 `wecco` is a Web Framework based on web standards such as [Web Components](https://www.webcomponents.org/), 
 [HTML Templates](https://developer.mozilla.org/de/docs/Web/HTML/Element/template) and plain JavaScript that features
 
@@ -125,3 +127,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ```
+
+[ci-img-url]: https://github.com/weccoframework/core/workflows/CI/badge.svg
+[release-img-url]: https://img.shields.io/github/v/release/weccoframework/core.svg
+[release-url]: https://github.com/weccoframework/core/releases
