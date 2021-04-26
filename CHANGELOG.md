@@ -1,5 +1,9 @@
 # Changelog
 
+# Version 0.21.1
+
+* fix minor build system details to conform to github npm registry
+
 # Version 0.21.0
 
 * updated package scope to `@weccoframework`
