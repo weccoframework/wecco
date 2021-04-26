@@ -22,19 +22,29 @@ means, that adding `wecco` to your project does not bloat your `node_modules`. T
 
 ### NPM
 
-Currently, wecco is not published to any npm registry, but you can install it using the full download URL:
+`wecco` is available via [Github NPM Packages](https://docs.github.com/en/packages/guides/configuring-npm-for-use-with-github-packages). To install it, create a file
+`.npmrc` next to your `package.json` with the following content:
 
-```bash
-$ npm i @wecco/core@https://bitbucket.org/wecco/core/downloads/wecco-core-0.12.0.tgz
+```
+@weccoframework:registry=https://npm.pkg.github.com
 ```
 
-### Via Bitbucket Downloads
+After you created this file, you can install `@weccoframework/core` as a standard NPM dependency.
 
-Directly include the bundled version of wecco into your HTML document:
+You can also go to the [releases](https://github.com/weccoframework/core/releases) and download the tar ball and install it manually.
+
+### Directly embedding in a HTML page
+
+You can include the a bundled version of `wecco` into your web application. Simply go to the 
+[releases](https://github.com/weccoframework/core/releases) and download the latest version
+of either the `umd` or `es5` bundle. To test a version, you can directly load the bundle
+from the github downloads, i.e.
 
 ```html
-<script src="https://bitbucket.org/wecco/core/downloads/wecco-core-0.12.0.umd.js"></script>
+<script src="https://github.com/weccoframework/core/releases/download/v0.21.1/weccoframework-core.es5.js"></script>
 ```
+
+Please note, that this is _not_ recommended for any kind of production systems and should only be used during development.
 
 ## Usage
 
