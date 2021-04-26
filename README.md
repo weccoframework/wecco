@@ -51,7 +51,7 @@ Please note, that this is _not_ recommended for any kind of production systems a
 The following code contains a full "app" for a button that counts the number of times a user clicked it.
 
 ```typescript
-import * as wecco from "@wecco/core"
+import * as wecco from "@weccoframework/core"
 
 class Model {
     constructor(public readonly count: number) {}
