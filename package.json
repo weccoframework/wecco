@@ -5,9 +5,9 @@
     "license": "Apache-2.0",
     "repository": {
         "type": "git",
-        "url": "https://halimath@bitbucket.org/wecco/core.git"
+        "url": "https://github.com/weccoframework/core.git"
     },
-    "homepage": "https://wecco.bitbucket.io/",
+    "homepage": "https://github.com/weccoframework/core",
     "devDependencies": {
         "typescript": "^4.1.2",
         "mocha": "^8.2.1",
@@ -39,7 +39,7 @@
         "watch": "rollup -c -w",
         "test": "mocha --require ts-node/register --require jsdom-global/register test/unit/**/*.test.ts",
         "acceptance-test": "mocha --timeout 5000 test/acceptance/**/*.test.js",
-        "coverage": "nyc mocha",
+        "coverage": "nyc mocha --require ts-node/register --require jsdom-global/register test/unit/**/*.test.ts",
         "lint": "tslint -p tslint.json"
     },
     "nyc": {
