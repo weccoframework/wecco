@@ -5,7 +5,7 @@
     "license": "Apache-2.0",
     "repository": {
         "type": "git",
-        "url": "https://github.com/weccoframework/core.git"
+        "url": "git://github.com/weccoframework/core.git"
     },
     "homepage": "https://github.com/weccoframework/core",
     "publishConfig": {
