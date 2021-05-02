@@ -8,9 +8,6 @@
         "url": "git://github.com/weccoframework/core.git"
     },
     "homepage": "https://github.com/weccoframework/core",
-    "publishConfig": {
-        "registry": "https://npm.pkg.github.com"
-    },
     "devDependencies": {
         "typescript": "^4.1.2",
         "mocha": "^8.2.1",
