@@ -22,14 +22,7 @@ means, that adding `wecco` to your project does not bloat your `node_modules`. T
 
 ### NPM
 
-`wecco` is available via [Github NPM Packages](https://docs.github.com/en/packages/guides/configuring-npm-for-use-with-github-packages). To install it, create a file
-`.npmrc` next to your `package.json` with the following content:
-
-```
-@weccoframework:registry=https://npm.pkg.github.com
-```
-
-After you created this file, you can install `@weccoframework/core` as a standard NPM dependency.
+`wecco` is available via npm as `@weccoframework/core`.
 
 You can also go to the [releases](https://github.com/weccoframework/core/releases) and download the tar ball and install it manually.
 
