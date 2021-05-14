@@ -2,7 +2,7 @@
 
 ![CI Status][ci-img-url] 
 [![Releases][release-img-url]][release-url]
-[![Vulerabilities][vulnerabilities-img-url]][vulnerabilities-img-url]
+[![Vulerabilities][vulnerabilities-img-url]][vulnerabilities-url]
 [![Dependencies][dependencies-img-url]][dependencies-url]
 
 
