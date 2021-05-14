@@ -1,6 +1,10 @@
 # wecco
 
-![CI Status][ci-img-url] [![Releases][release-img-url]][release-url]
+![CI Status][ci-img-url] 
+[![Releases][release-img-url]][release-url]
+[![Vulerabilities][vulnerabilities-img-url]][vulnerabilities-img-url]
+[![Dependencies][dependencies-img-url]][dependencies-url]
+
 
 `wecco` is a Web Framework based on web standards such as [Web Components](https://www.webcomponents.org/), 
 [HTML Templates](https://developer.mozilla.org/de/docs/Web/HTML/Element/template) and plain JavaScript that features
@@ -134,3 +138,7 @@ limitations under the License.
 [ci-img-url]: https://github.com/weccoframework/core/workflows/CI/badge.svg
 [release-img-url]: https://img.shields.io/github/v/release/weccoframework/core.svg
 [release-url]: https://github.com/weccoframework/core/releases
+[vulnerabilities-url]: https://snyk.io/test/github/weccoframework/core
+[vulnerabilities-img-url]: https://snyk.io/test/github/weccoframework/core/badge.svg
+[dependencies-url]: https://david-dm.org/weccoframework/core
+[dependencies-img-url]: https://status.david-dm.org/gh/weccoframework/core.svg
