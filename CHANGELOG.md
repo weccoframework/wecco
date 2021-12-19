@@ -1,5 +1,9 @@
 # Changelog
 
+# Version 0.21.2
+
+* trigger `update` event when rendering shadow root
+
 # Version 0.21.1
 
 * fix minor build system details to conform to github npm registry
