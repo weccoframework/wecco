@@ -267,6 +267,46 @@ describe("define", () => {
     })
 
     describe("events", () => {
+        it("should emit update event", async () => {
+            await fixture.page.evaluate(() => {
+                window._receivedEventTarget = ""
+
+                const init = e => {
+                    window._receivedEventTarget = e.target.nodeName
+                }
+
+                wecco.define("test-component", () => {
+                    return wecco.html`<div @update=${init}></div>`
+                })
+                document.querySelector("#app").innerHTML = "<test-component></test-component>"
+            })
+
+            await sleep(10)
+
+            const eventTarget = await fixture.page.evaluate(() => window._receivedEventTarget)
+            expect(eventTarget).toBe("DIV")
+        })
+
+        it("should emit update event in shadow root", async () => {
+            await fixture.page.evaluate(() => {
+                window._receivedEventTarget = ""
+
+                const init = e => {
+                    window._receivedEventTarget = e.target.nodeName
+                }
+
+                wecco.define("test-component", () => {
+                    return wecco.shadow(wecco.html`<div @update=${init}></div>`)
+                })
+                document.querySelector("#app").innerHTML = "<test-component></test-component>"
+            })
+
+            await sleep(10)
+
+            const eventTarget = await fixture.page.evaluate(() => window._receivedEventTarget)
+            expect(eventTarget).toBe("DIV")
+        })
+
         it("should emit custom events", () => {
             return fixture.page.evaluate(() => {
                 window._receivedEvent = null
