@@ -1,5 +1,9 @@
 # Changelog
 
+# Version 0.21.3
+
+* fix: `removeAllChildren` also works with non-`Element`s such as Shadow root or other document-fragments.
+
 # Version 0.21.2
 
 * trigger `update` event when rendering shadow root
