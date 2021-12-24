@@ -56,6 +56,6 @@ export function removeNodes(start: Node, end?: Node) {
     while (start && start !== end) {
         let s = start
         start = start.nextSibling
-        s.parentElement.removeChild(s)
+        s.parentNode.removeChild(s)
     }
 }
