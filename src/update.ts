@@ -92,7 +92,12 @@ export function updateElement(target: UpdateTarget | ElementSelector, request: E
  * not bubble.
  * @param targetElement the root of the update
  */
-function sendUpdateEvent(targetElement: UpdateTarget): void { 
+function sendUpdateEvent(targetElement: UpdateTarget): void {
+    if (!targetElement.isConnected) {
+        // If the element is not connected to a a document root, we do not send any update here.
+        return
+    }
+
     const treeWalker = document.createTreeWalker(targetElement, NodeFilter.SHOW_ELEMENT, new CustomElementFilter())
     let e: Node
     
