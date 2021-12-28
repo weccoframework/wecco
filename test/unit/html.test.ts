@@ -220,6 +220,12 @@ describe("html.ts", async () => {
                 updateElement(document.body, html`<div>${html`<span @update=${() => { updateCalled = true }}></span>`}</div>`)        
                 expect(updateCalled).toBe(true)
             })
+
+            it("should render list of nested html template and propagate @update event", () => {
+                let updateCalled = 0
+                updateElement(document.body, [html`<div>${html`<span @update=${() => { updateCalled++ }}></span>`}</div>`])
+                expect(updateCalled).toBe(1)
+            })
         })
 
         describe("iterables", () => {

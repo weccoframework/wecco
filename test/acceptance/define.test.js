@@ -307,6 +307,27 @@ describe("define", () => {
             expect(eventTarget).toBe("DIV")
         })
 
+        it("should emit update event in shadow root only once", async () => {
+            await fixture.page.evaluate(() => {
+                window._receivedEventTargets = []
+
+                wecco.define("test-component", () => {
+                    const init = e => {
+                        window._receivedEventTargets.push(e.target.nodeName)
+                    }    
+                    return wecco.shadow([
+                        wecco.html`<div @update=${init}></div>`
+                    ])
+                })
+                document.querySelector("#app").innerHTML = "<test-component></test-component>"
+            })
+
+            await sleep(10)
+
+            const eventTargets = await fixture.page.evaluate(() => window._receivedEventTargets)
+            expect(eventTargets.length).toBe(1)
+        })
+
         it("should emit custom events", () => {
             return fixture.page.evaluate(() => {
                 window._receivedEvent = null
