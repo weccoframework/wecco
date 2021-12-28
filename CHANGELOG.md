@@ -1,5 +1,9 @@
 # Changelog
 
+# Version 0.21.4
+
+* fix: only send `update` event for elements connected to a document root
+
 # Version 0.21.3
 
 * fix: `removeAllChildren` also works with non-`Element`s such as Shadow root or other document-fragments.
