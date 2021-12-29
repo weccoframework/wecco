@@ -70,7 +70,7 @@ export function isElementUpdate(arg: any): arg is ElementUpdate {
  */
 export function updateElement(target: UpdateTarget | ElementSelector, request: ElementUpdate, notifyUpdated?: boolean): void {
     notifyUpdated = notifyUpdated ?? true
-    
+
     const targetElement = typeof target === "string"
         ? resolve(target)
         : target
@@ -99,9 +99,9 @@ function sendUpdateEvent(targetElement: UpdateTarget): void {
     }
 
     // Send update event for all elements not visiting neither custom elements nor their sub-trees.
-    let treeWalker = document.createTreeWalker(targetElement, NodeFilter.SHOW_ELEMENT, new ExcludeCustomElementsFilter())
-    let e: Node    
-    while (e = treeWalker.nextNode()) {        
+    let treeWalker = document.createTreeWalker(targetElement, NodeFilter.SHOW_ELEMENT, ExcludeCustomElementsFilter)
+    let e: Node
+    while (e = treeWalker.nextNode()) {
         (e as EventTarget).dispatchEvent(new CustomEvent("update", {
             // Don't let the event bubble up the DOM. An individual event
             // will be dispatched for every element that is part of the
@@ -111,8 +111,8 @@ function sendUpdateEvent(targetElement: UpdateTarget): void {
     }
 
     // Send update event for all custom elments but only custom elements alone - not their sub-trees.
-    treeWalker = document.createTreeWalker(targetElement, NodeFilter.SHOW_ELEMENT, new OnlyCustomElementsFilter())    
-    while (e = treeWalker.nextNode()) {        
+    treeWalker = document.createTreeWalker(targetElement, NodeFilter.SHOW_ELEMENT, OnlyCustomElementsFilter)
+    while (e = treeWalker.nextNode()) {
         (e as EventTarget).dispatchEvent(new CustomEvent("update", {
             // Don't let the event bubble up the DOM. An individual event
             // will be dispatched for every element that is part of the
@@ -129,25 +129,23 @@ function sendUpdateEvent(targetElement: UpdateTarget): void {
  * the element itself as well as the element's children. This prevents sending update events twice per render
  * cycle for custom elements with nested html templates.
  */
-class ExcludeCustomElementsFilter implements NodeFilter {
-    acceptNode(node: Node): number {
-        if (node.nodeType === Node.ELEMENT_NODE && node.nodeName.indexOf("-") >= 0) {
-            return NodeFilter.FILTER_REJECT
-        }
+const ExcludeCustomElementsFilter: NodeFilter = (node: Node): number => {
+    if (node.nodeType === Node.ELEMENT_NODE && node.nodeName.indexOf("-") >= 0) {
+        return NodeFilter.FILTER_REJECT
+    }
 
+    return NodeFilter.FILTER_ACCEPT
+}
+
+
+const OnlyCustomElementsFilter: NodeFilter = (node: Node): number => {
+    if (node.nodeType === Node.ELEMENT_NODE && node.nodeName.indexOf("-") >= 0) {
         return NodeFilter.FILTER_ACCEPT
     }
+
+    return NodeFilter.FILTER_REJECT
 }
 
-class OnlyCustomElementsFilter implements NodeFilter {
-    acceptNode(node: Node): number {
-        if (node.nodeType === Node.ELEMENT_NODE && node.nodeName.indexOf("-") >= 0) {
-            return NodeFilter.FILTER_ACCEPT
-        }
-
-        return NodeFilter.FILTER_REJECT
-    }    
-}
 
 function executeElementUpdate(targetElement: UpdateTarget, request: ElementUpdate): void {
     if (Array.isArray(request)) {
@@ -155,13 +153,13 @@ function executeElementUpdate(targetElement: UpdateTarget, request: ElementUpdat
         // and move the resulting elements under target.
         // Clear the target element upfront to get a "fresh" starting point.
         removeAllChildren(targetElement)
-        
+
         request.forEach(r => {
             const fragment = document.createDocumentFragment()
             updateElement(fragment, r)
             targetElement.appendChild(fragment)
         })
-        
+
         return
     }
 
@@ -170,9 +168,9 @@ function executeElementUpdate(targetElement: UpdateTarget, request: ElementUpdat
         // and append it to target.
         // Clear the target element upfront to get a "fresh" starting point.
         removeAllChildren(targetElement)
-        
+
         targetElement.appendChild(document.createTextNode(request))
-        
+
         return
     }
 
@@ -180,9 +178,9 @@ function executeElementUpdate(targetElement: UpdateTarget, request: ElementUpdat
         // Append the element directly.
         // Clear the target element upfront to get a "fresh" starting point.
         removeAllChildren(targetElement)
-        
+
         targetElement.appendChild(request)
-        
+
         return
     }
 
