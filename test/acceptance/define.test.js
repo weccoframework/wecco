@@ -328,6 +328,18 @@ describe("define", () => {
             expect(eventTargets.length).toBe(1)
         })
 
+        it("should invoke @update for custom elements", async () => {
+            await fixture.page.evaluate(() => {
+                wecco.define("custom-element", () => "")
+                window.updateCalled = 0
+                wecco.updateElement("#app", wecco.html`<custom-element @update=${() => { window.updateCalled++ }}></custom-element>`)
+            })
+            await sleep()
+
+            const updateCalled = await fixture.page.evaluate(() => window.updateCalled)
+            expect(updateCalled).toBe(1)
+        })        
+
         it("should emit custom events", () => {
             return fixture.page.evaluate(() => {
                 window._receivedEvent = null

@@ -94,13 +94,13 @@ export function updateElement(target: UpdateTarget | ElementSelector, request: E
  */
 function sendUpdateEvent(targetElement: UpdateTarget): void {
     if (!targetElement.isConnected) {
-        // If the element is not connected to a a document root, we do not send any update here.
+        // If the element is not connected to a document root, we do not send any update here.
         return
     }
 
-    const treeWalker = document.createTreeWalker(targetElement, NodeFilter.SHOW_ELEMENT, new CustomElementFilter())
-    let e: Node
-    
+    // Send update event for all elements not visiting neither custom elements nor their sub-trees.
+    let treeWalker = document.createTreeWalker(targetElement, NodeFilter.SHOW_ELEMENT, new ExcludeCustomElementsFilter())
+    let e: Node    
     while (e = treeWalker.nextNode()) {        
         (e as EventTarget).dispatchEvent(new CustomEvent("update", {
             // Don't let the event bubble up the DOM. An individual event
@@ -109,21 +109,44 @@ function sendUpdateEvent(targetElement: UpdateTarget): void {
             bubbles: false,
         }))
     }
+
+    // Send update event for all custom elments but only custom elements alone - not their sub-trees.
+    treeWalker = document.createTreeWalker(targetElement, NodeFilter.SHOW_ELEMENT, new OnlyCustomElementsFilter())    
+    while (e = treeWalker.nextNode()) {        
+        (e as EventTarget).dispatchEvent(new CustomEvent("update", {
+            // Don't let the event bubble up the DOM. An individual event
+            // will be dispatched for every element that is part of the
+            // update.
+            bubbles: false,
+        }))
+    }
+
 }
 
-class CustomElementFilter implements NodeFilter {
+/**
+ * A NodeFilter that accepts all elements except custom elements (those that contain a - in their node name).
+ * This filter is meant to be used to trigger update events reject custom elements which means to skip both 
+ * the element itself as well as the element's children. This prevents sending update events twice per render
+ * cycle for custom elements with nested html templates.
+ */
+class ExcludeCustomElementsFilter implements NodeFilter {
     acceptNode(node: Node): number {
         if (node.nodeType === Node.ELEMENT_NODE && node.nodeName.indexOf("-") >= 0) {
-            // Reject custom elements which means to skip both the element itself
-            // as well as the element's children.
-            // We skip WeccoElement here as they have their own render lifecycle
-            // and update events for nested elements will be send from the
-            // element's update.
             return NodeFilter.FILTER_REJECT
         }
 
         return NodeFilter.FILTER_ACCEPT
     }
+}
+
+class OnlyCustomElementsFilter implements NodeFilter {
+    acceptNode(node: Node): number {
+        if (node.nodeType === Node.ELEMENT_NODE && node.nodeName.indexOf("-") >= 0) {
+            return NodeFilter.FILTER_ACCEPT
+        }
+
+        return NodeFilter.FILTER_REJECT
+    }    
 }
 
 function executeElementUpdate(targetElement: UpdateTarget, request: ElementUpdate): void {
