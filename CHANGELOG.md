@@ -1,5 +1,8 @@
 # Changelog
 
+# Version 0.21.5
+
+* fix: send `update` event for custom elements but not their sub-trees
 # Version 0.21.4
 
 * fix: only send `update` event for elements connected to a document root
