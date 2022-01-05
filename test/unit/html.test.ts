@@ -143,6 +143,12 @@ describe("html.ts", async () => {
 
                 expect(removeMarkerComments(document.querySelector("input").value)).toBe("hello, world again")
             })
+
+            it("should preserve casing", () => {
+                updateElement(document.body, html`<div .innerText=${"hello, world"}></div>`)
+
+                expect(removeMarkerComments(document.querySelector("div").innerText)).toBe("hello, world")
+            })
         })
 
         describe("events", () => {

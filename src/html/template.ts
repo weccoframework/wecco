@@ -35,6 +35,7 @@ const elementTemplateMap = new WeakMap<UpdateTarget, HtmlTemplate>()
  */
 export class HtmlTemplate implements ElementUpdater {
     private _templateString: string | undefined
+    private _attributeMappings: Map<string, string>
     private _templateElement: HTMLTemplateElement | undefined
     private _bindings: Array<Binding> | undefined
 
@@ -52,7 +53,7 @@ export class HtmlTemplate implements ElementUpdater {
      */
     get templateString(): string {
         if (typeof this._templateString === "undefined") {
-            this._templateString = generateHtml(this.strings)
+            [this._templateString, this._attributeMappings] = generateHtml(this.strings)
         }
         return this._templateString
     }
@@ -64,7 +65,7 @@ export class HtmlTemplate implements ElementUpdater {
         if (typeof this._templateElement === "undefined") {
             this._templateElement = document.createElement("template")
             this._templateElement.innerHTML = this.templateString
-            this._bindings = determineBindings(this._templateElement.content)
+            this._bindings = determineBindings(this._templateElement.content, this)
         }
         return this._templateElement
     }
@@ -102,27 +103,46 @@ export class HtmlTemplate implements ElementUpdater {
 
         elementTemplateMap.set(host, this)
     }
+
+    /**
+     * Returns the name of the attribute the given placeholder is used with in
+     * the exact casing used in the template source. Most browsers convert attributes
+     * to lower case when making them accessible via Javascript so this method
+     * returns the original casing used in the template source.
+     * @param placeholder the placeholder
+     * @returns the attribute name or `null` if the placeholder is not used as part
+     * of an attribute.
+     */
+    attributeName(placeholder: string): string | null {
+        return this._attributeMappings.get(placeholder)
+    }
 }
 
-const PlaceholderAttributeRegex = /[a-z0-9-_@]+\s*=\s*$/i;
-const PlaceholderSingleQuotedAttributeRegex = /[a-z0-9-_@]+\s*=\s*'[^']*$/i;
-const PlaceholderDoubleQuotedAttributeRegex = /[a-z0-9-_@]+\s*=\s*"[^"]*$/i;
+const PlaceholderAttributeRegex = /([.?@]?[a-z0-9-_@]+)\s*=\s*$/i;
+const PlaceholderSingleQuotedAttributeRegex = /([.?@]?[a-z0-9-_@]+)\s*=\s*'[^']*$/i;
+const PlaceholderDoubleQuotedAttributeRegex = /([.?@]?[a-z0-9-_@]+)\s*=\s*"[^"]*$/i;
 
 /**
  * Generates a HTML markup string from the given static string parts.
- * Inserts placeholder strings between the static parts.
+ * Inserts placeholder strings between the static parts. In addition, this method
+ * returns a map from placeholder to attribute name. 
  * @param strings the strings array
- * @returns the HTML markup
+ * @returns the HTML markup as well as a map from placeholder to property name
  */
-function generateHtml(strings: TemplateStringsArray) {
+function generateHtml(strings: TemplateStringsArray): [string, Map<string, string>] {
     let html = ""
+
+    const attributeMappings = new Map<string, string>()
 
     strings.forEach((s, i) => {
         html += s
         if (i < strings.length - 1) {
-            if (PlaceholderAttributeRegex.test(html) || PlaceholderSingleQuotedAttributeRegex.test(html) || PlaceholderDoubleQuotedAttributeRegex.test(html)) {
-                // Placeholder is used as an attribute value. Insert placeholder
-                html += generatePlaceholder(i)
+            const attributeMatch = PlaceholderAttributeRegex.exec(html) || PlaceholderSingleQuotedAttributeRegex.exec(html) || PlaceholderDoubleQuotedAttributeRegex.exec(html)
+            if (attributeMatch) {
+                // Placeholder is used as (part of) an attribute value. Insert placeholder.
+                const placeholder = generatePlaceholder(i)
+                html += placeholder
+                attributeMappings.set(placeholder, attributeMatch[1])
             } else {
                 // Placeholder is used as text content. Insert a comment node
                 html += `<!--${generatePlaceholder(i)}-->`
@@ -130,7 +150,7 @@ function generateHtml(strings: TemplateStringsArray) {
         }
     })
 
-    return html.trim()
+    return [html.trim(), attributeMappings]
 }
 
 /**
@@ -628,9 +648,10 @@ export function bindBindings(bindings: ReadonlyArray<Binding>, root: Node) {
  * Walks the DOM subtree and collects `Bindings` returning the list of unbound
  * bindings.
  * @param root the root of the DOM subtree
+ * @param template the instance of HtmlTemplate to determine bindings for
  * @returns the determined bindings
  */
-export function determineBindings(root: Node): Array<Binding> {
+export function determineBindings(root: Node, template: HtmlTemplate): Array<Binding> {
     const bindings: Array<Binding> = []
     const treeWalker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT | NodeFilter.SHOW_TEXT, null)
     let nodeIndex = -1
@@ -667,7 +688,7 @@ export function determineBindings(root: Node): Array<Binding> {
                         continue
                     }
 
-                    bindings.push(new BooleanAttributeBinding(nodeIndex, name.substr(1), extractPlaceholderId(parts[0])))
+                    bindings.push(new BooleanAttributeBinding(nodeIndex, name.substring(1), extractPlaceholderId(parts[0])))
                     continue
                 }
 
@@ -686,7 +707,9 @@ export function determineBindings(root: Node): Array<Binding> {
                         continue
                     }
 
-                    bindings.push(new PropertyBinding(nodeIndex, name.substr(1), extractPlaceholderId(parts[0])))
+                    const propertyName = template.attributeName(parts[0])
+
+                    bindings.push(new PropertyBinding(nodeIndex, propertyName.substring(1), extractPlaceholderId(parts[0])))
                     continue
                 }
 
@@ -705,7 +728,7 @@ export function determineBindings(root: Node): Array<Binding> {
                     }
 
                     const directives: EventListenerAttributeDirectives = {}
-                    const [eventName, ...directive] = name.substr(1).split("+")
+                    const [eventName, ...directive] = name.substring(1).split("+")
                     directive.forEach(optName => {
                         switch (optName.toLocaleLowerCase()) {
                             case "capture":

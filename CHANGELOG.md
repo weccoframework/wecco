@@ -1,5 +1,9 @@
 # Changelog
 
+# Version 0.21.6
+
+* fix: preserve case when setting properties from HTML template attributes
+
 # Version 0.21.5
 
 * fix: send `update` event for custom elements but not their sub-trees
