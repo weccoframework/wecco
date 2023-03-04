@@ -20,7 +20,7 @@ module.exports = {
         plugins: [new TsconfigPathsPlugin()]
     },
     devServer: {
-        contentBase: "./public",
+        static: "./public",
         host: "0.0.0.0",
         compress: true,
         port: 9999
