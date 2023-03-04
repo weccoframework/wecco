@@ -1,5 +1,9 @@
 # Changelog
 
+# Version 0.21.7
+
+* Upgraded several dependencies (security fixes)
+
 # Version 0.21.6
 
 * fix: preserve case when setting properties from HTML template attributes
