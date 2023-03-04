@@ -3,7 +3,8 @@ name: CI
 on:
   push:
     branches:
-      - master
+    - master
+    - main
   pull_request:
 
 jobs:
@@ -12,17 +13,17 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: ['14', '15']
+        node: ['16', '17', '18']
     steps:
-      - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       
-      - name: Setup node
-        uses: actions/setup-node@v2
-        with:
-          node-version: ${{ matrix.node }}
+    - name: Setup node
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node }}
       
-      - run: npm install
-      - run: npm run build
-      - run: npm test
-      - run: npm run acceptance-test
-      - run: npm run coverage
+    - run: npm install
+    - run: npm run build
+    - run: npm test
+    - run: npm run acceptance-test
+    - run: npm run coverage
