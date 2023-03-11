@@ -46,12 +46,13 @@ export interface ElementUpdater {
 
 /**
  * `ElementUpdate` defines the possible types for update requests.
+ * - `null` is used to signal no change
  * - `string`s will be used to define `innerText`
  * - `Element`s should be inserted/appended
  * - `ElementUpdateFunction` or `ElementUpdater` are applied
  * - arrays of the afore mentioned are applied in sequence
  */
-export type ElementUpdate = string | Element | ElementUpdateFunction | ElementUpdater | Array<ElementUpdate>
+export type ElementUpdate = null | string | Element | ElementUpdateFunction | ElementUpdater | Array<ElementUpdate>
 
 /**
  * `isElementUpdate` is a type guard that checks whether the given argument is an `ElementUpdate`.
@@ -148,6 +149,11 @@ const OnlyCustomElementsFilter: NodeFilter = (node: Node): number => {
 
 
 function executeElementUpdate(targetElement: UpdateTarget, request: ElementUpdate): void {
+    if (request === null) {
+        // A null value as request means no change.
+        return
+    }
+
     if (Array.isArray(request)) {
         // An array of requests. Apply one at a time to a DocumentFragment
         // and move the resulting elements under target.

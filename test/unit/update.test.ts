@@ -33,6 +33,12 @@ describe("update.ts", () => {
             el = document.createElement("div")
         })
 
+        it("w/ null", () => {
+            updateElement(el, null)
+            expect(el.childNodes.length).toBe(0)
+            expect(el.textContent).toBe("")
+        })
+
         it("w/ string", () => {
             updateElement(el, "hello, world")
             expect(el.childNodes.length).toBe(1)

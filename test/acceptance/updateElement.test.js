@@ -25,6 +25,14 @@ function removeMarkerComments (html) {
 }
 
 describe("updateElement", () => {
+    it("should render null", async () => {
+        await fixture.page.evaluate(() => wecco.updateElement("#app", null))
+        await sleep()
+
+        const text = await fixture.page.$eval("#app", e => e.innerText)
+        expect(text).toBe("")
+    })
+
     it("should render static text", async () => {
         await fixture.page.evaluate(() => wecco.updateElement("#app", "test"))
         await sleep()
