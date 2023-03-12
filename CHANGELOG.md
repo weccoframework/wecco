@@ -1,5 +1,9 @@
 # Changelog
 
+# Version 0.22.1
+
+* Fix `null` value error when using `null` inside a placeholder of `wecco.html`
+
 # Version 0.22.0
 
 **Breaking Change**: This version contains an API change that breaks with prior
