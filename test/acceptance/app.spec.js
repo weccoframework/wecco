@@ -16,13 +16,14 @@
  * limitations under the License.
  */
 
-const { expect } = require("iko")
-const { fixture: fixture } = require("./fixture.test")
-const { sleep } = require("./sleep")
+import { expect, test } from "@playwright/test"
+import { sleep } from "./sleep"
 
-describe("app", () => {
-    it("should run counter app", async () => {
-        await fixture.page.evaluate(() => {
+test.describe("app", () => {
+    test("should run counter app", async ({page}) => {
+        await page.goto(".")
+
+        await page.evaluate(() => {
             class Model {
                 constructor(count) { 
                     this.count = count
@@ -48,13 +49,13 @@ describe("app", () => {
             wecco.app(() => new Model(0), update, view, "#app")
         })
         
-        await fixture.page.evaluate(() => {
+        await page.evaluate(() => {
             document.querySelector("button").dispatchEvent(new MouseEvent("click"))
         })
         
         await sleep(100)
         
-        const text = await fixture.page.$eval("#app button", e => e.innerText)
-        expect(text).toBe("You clicked me 1 times")
+        const text = await page.$eval("#app button", e => e.innerText)
+        await expect(text).toBe("You clicked me 1 times")
     })
 })

@@ -16,111 +16,120 @@
  * limitations under the License.
  */
 
-const { expect } = require("iko")
-const { fixture: fixture } = require("./fixture.test")
-const { sleep } = require("./sleep")
+import { expect, test } from "@playwright/test"
+import { sleep } from "./sleep"
 
 function removeMarkerComments (html) {
     return html.replace(/<!---->/g, "")
 }
 
-describe("updateElement", () => {
-    it("should render null", async () => {
-        await fixture.page.evaluate(() => wecco.updateElement("#app", null))
+test.describe("updateElement", () => {
+    test("should render null", async ({page}) => {
+        await page.goto(".")
+        await page.evaluate(() => wecco.updateElement("#app", null))
         await sleep()
 
-        const text = await fixture.page.$eval("#app", e => e.innerText)
+        const text = await page.$eval("#app", e => e.innerText)
         expect(text).toBe("")
     })
 
-    it("should render static text", async () => {
-        await fixture.page.evaluate(() => wecco.updateElement("#app", "test"))
+    test("should render static text", async ({page}) => {
+        await page.goto(".")
+        await page.evaluate(() => wecco.updateElement("#app", "test"))
         await sleep()
 
-        const text = await fixture.page.$eval("#app", e => e.innerText)
+        const text = await page.$eval("#app", e => e.innerText)
         expect(text).toBe("test")
     })
 
-    it("should render dynamic text", async () => {
-        await fixture.page.evaluate(() => wecco.updateElement("#app", `${"hello, world"}`))
+    test("should render dynamic text", async ({page}) => {
+        await page.goto(".")
+        await page.evaluate(() => wecco.updateElement("#app", `${"hello, world"}`))
         await sleep()
 
-        const text = await fixture.page.$eval("#app", e => e.innerText)
+        const text = await page.$eval("#app", e => e.innerText)
         expect(text).toBe("hello, world")
     })
 
-    it("should render dynamic text using tagged html", async () => {
-        await fixture.page.evaluate(() => wecco.updateElement("#app", wecco.html`<p>${"hello, world"}</p>`))
+    test("should render dynamic text using tagged html", async ({page}) => {
+        await page.goto(".")
+        await page.evaluate(() => wecco.updateElement("#app", wecco.html`<p>${"hello, world"}</p>`))
         await sleep()
 
-        const text = await fixture.page.$eval("#app p", e => e.innerText)
+        const text = await page.$eval("#app p", e => e.innerText)
         expect(text).toBe("hello, world")
     })
 
-    it("should render tagged html with toplevel placeholder ", async () => {
-        await fixture.page.evaluate(() => wecco.updateElement("#app", wecco.html`<p>${"hello, world"}</p>${"dude"}`))
+    test("should render tagged html with toplevel placeholder ", async ({page}) => {
+        await page.goto(".")
+        await page.evaluate(() => wecco.updateElement("#app", wecco.html`<p>${"hello, world"}</p>${"dude"}`))
         await sleep()
 
-        const text = await fixture.page.$eval("#app", e => e.innerHTML)
+        const text = await page.$eval("#app", e => e.innerHTML)
         expect(removeMarkerComments(text)).toBe(`<p>hello, world</p>dude`)
     })
 
-    it("should render array of static and dynamic text using tagged text", async () => {
-        await fixture.page.evaluate(() => wecco.updateElement("#app", [
+    test("should render array of static and dynamic text using tagged text", async ({page}) => {
+        await page.goto(".")
+        await page.evaluate(() => wecco.updateElement("#app", [
             wecco.html`<p>${"hello, world"}</p>`,
             `hello, world again`
         ]))
         await sleep()
 
-        const text = await fixture.page.$eval("#app", e => e.innerHTML)
+        const text = await page.$eval("#app", e => e.innerHTML)
         expect(removeMarkerComments(text)).toBe(`<p>hello, world</p>hello, world again`)
     })
 
-    it("should render nested iterables", async () => {
-        await fixture.page.evaluate(() => {
+    test("should render nested iterables", async ({page}) => {
+        await page.goto(".")
+        await page.evaluate(() => {
             const li = (content) => wecco.html`<li>${content}</li>`
             const ul = (items) => wecco.html`<ul>${items}</ul>`
     
             wecco.updateElement("#app", ul([li("foo"), li("bar"), li(ul([li("spam"), li("eggs")]))]))
         })
 
-        const text = await fixture.page.$eval("#app", e => e.innerHTML)
+        const text = await page.$eval("#app", e => e.innerHTML)
         expect(removeMarkerComments(text)).toBe(`<ul><li>foo</li><li>bar</li><li><ul><li>spam</li><li>eggs</li></ul></li></ul>`)
     })
 
-    describe("forms", () => {
-        it("should render value binding of input element", async () => {
-            await fixture.page.evaluate(() => wecco.updateElement("#app", wecco.html`<input type="text" .value=${"hello, world"}>`))
+    test.describe("forms", () => {
+        test("should render value binding of input element", async ({page}) => {
+            await page.goto(".")
+            await page.evaluate(() => wecco.updateElement("#app", wecco.html`<input type="text" .value=${"hello, world"}>`))
             await sleep()
     
-            const text = await fixture.page.$eval("#app input", e => e.value)
+            const text = await page.$eval("#app input", e => e.value)
             expect(text).toBe("hello, world")
         })        
 
-        it("should update value binding of input element", async () => {
-            await fixture.page.evaluate(() => {
+        test("should update value binding of input element", async ({page}) => {
+            await page.goto(".")
+            await page.evaluate(() => {
                 window.tpl = (value) => wecco.html`<input type="text" .value=${value}>`
                 wecco.updateElement("#app", tpl("hello, world"))
             })
             await sleep()
 
-            let text = await fixture.page.$eval("#app input", e => e.value)
+            let text = await page.$eval("#app input", e => e.value)
             expect(text).toBe("hello, world")
 
-            await fixture.page.evaluate(() => {
+            await page.evaluate(() => {
                 wecco.updateElement("#app", tpl("hello, world again"))
             })
 
             await sleep()
 
-            text = await fixture.page.$eval("#app input", e => e.value)
+            text = await page.$eval("#app input", e => e.value)
             expect(text).toBe("hello, world again")
         })        
     })
 
-    describe("update event", () => {
-        it("should invoke @update only once per update cycle", async () => {
-            await fixture.page.evaluate(() => {
+    test.describe("update event", () => {
+        test("should invoke @update only once per update cycle", async ({page}) => {
+            await page.goto(".")
+            await page.evaluate(() => {
                 window.updateCounter = 0;
                 const comp = () => {
                     const onMount = () => {
@@ -133,36 +142,39 @@ describe("updateElement", () => {
             })
             await sleep()
 
-            const count = await fixture.page.evaluate(() => window.updateCounter)
+            const count = await page.evaluate(() => window.updateCounter)
             expect(count).toBe(1)
         })
 
-        it("should invoke @update for nested html template", async () => {
-            await fixture.page.evaluate(() => {
+        test("should invoke @update for nested html template", async ({page}) => {
+            await page.goto(".")
+            await page.evaluate(() => {
                 window.updateCalled = 0
                 wecco.updateElement("#app", wecco.html`<div>${wecco.html`<span @update=${() => { window.updateCalled++ }}></span>`}</div>`)
             })
             await sleep()
 
-            const updateCalled = await fixture.page.evaluate(() => window.updateCalled)
+            const updateCalled = await page.evaluate(() => window.updateCalled)
             expect(updateCalled).toBe(1)
         })
 
-        it("should invoke @update for deeply nested html template", async () => {
-            await fixture.page.evaluate(() => {
+        test("should invoke @update for deeply nested html template", async ({page}) => {
+            await page.goto(".")
+            await page.evaluate(() => {
                 window.updateCalled = 0
                 wecco.updateElement("#app", wecco.html`<div>${wecco.html`<div>${wecco.html`<span @update=${() => { window.updateCalled++ }}></span>`}</div>`}</div>`)
             })
             await sleep()
 
-            const updateCalled = await fixture.page.evaluate(() => window.updateCalled)
+            const updateCalled = await page.evaluate(() => window.updateCalled)
             expect(updateCalled).toBe(1)
         })
     })
 
-    describe("template reuse", () => {
-        it("render should only re-render changed elements", async () => {
-            await fixture.page.evaluate(() => {
+    test.describe("template reuse", () => {
+        test("render should only re-render changed elements", async ({page}) => {
+            await page.goto(".")
+            await page.evaluate(() => {
                 document.test = {}
                 document.test.app = document.body.querySelector("#app")
 
@@ -173,37 +185,38 @@ describe("updateElement", () => {
                 document.test.app.querySelector("div").setAttribute("data-test-marker", "1")
             })
 
-            let text = await fixture.page.evaluate(() => document.querySelector("#app div p").innerText)
+            let text = await page.evaluate(() => document.querySelector("#app div p").innerText)
             expect(text).toBe("foo")
 
-            let testMarker = await fixture.page.evaluate(() => document.querySelector("#app div").getAttribute("data-test-marker"))
+            let testMarker = await page.evaluate(() => document.querySelector("#app div").getAttribute("data-test-marker"))
             expect(testMarker).toBe("1")
 
-            await fixture.page.evaluate(() => {
+            await page.evaluate(() => {
                 document.test.renderText("bar")
             })
 
-            text = await fixture.page.evaluate(() => document.querySelector("#app div p").innerText)
+            text = await page.evaluate(() => document.querySelector("#app div p").innerText)
             expect(text).toBe("bar")
 
-            testMarker = await fixture.page.evaluate(() => document.querySelector("#app div").getAttribute("data-test-marker"))
+            testMarker = await page.evaluate(() => document.querySelector("#app div").getAttribute("data-test-marker"))
             expect(testMarker).toBe("1")
         })
 
-        it("should remove rendered html when re-rendering empty string as nested template", async () => {
-            await fixture.page.evaluate(() => {
+        test("should remove rendered html when re-rendering empty string as nested template", async ({page}) => {
+            await page.goto(".")
+            await page.evaluate(() => {
                 window.tpl = msg => wecco.html`<p>hello, ${msg ? wecco.html`<em>${msg}</em>` : "world"}</p>`
                 wecco.updateElement("#app", tpl("foo"))
             })
 
-            let text = await fixture.page.evaluate(() => document.querySelector("#app").innerHTML)
+            let text = await page.evaluate(() => document.querySelector("#app").innerHTML)
             expect(removeMarkerComments(text)).toBe("<p>hello, <em>foo</em></p>")
 
-            await fixture.page.evaluate(() => {
+            await page.evaluate(() => {
                 wecco.updateElement("#app", tpl())
             })
 
-            text = await fixture.page.evaluate(() => document.querySelector("#app").innerHTML)
+            text = await page.evaluate(() => document.querySelector("#app").innerHTML)
             expect(removeMarkerComments(text)).toBe("<p>hello, world</p>")
         })
 
