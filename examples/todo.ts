@@ -95,35 +95,35 @@ class Store {
 
 // -- View
 
-function view(model: TodoList, context: wecco.AppContext<Message>): wecco.ElementUpdate {
+function view(ctx: wecco.AppContext<Message>, model: TodoList): wecco.ElementUpdate {
     return wecco.html`
         <h2>${model.title || "Todos"}</h2>
         <div>
-            ${model.items.map((item, idx) => item_view(item, idx, context))}
+            ${model.items.map(itemView.bind(null, ctx))}
         </div>
         
         <div class="mt-2 text-right">
-            <button class="btn btn-primary" @click=${() => context.emit({ command: "add" })}><i class="material-icons">add</i></button>
+            <button class="btn btn-primary" @click=${() => ctx.emit({ command: "add" })}><i class="material-icons">add</i></button>
         </div>
     `
 }
 
-function item_view(model: TodoItem, idx: number, context: wecco.AppContext<Message>): wecco.ElementUpdate {
-    const onChange = (e: InputEvent) => context.emit({
+function itemView(ctx: wecco.AppContext<Message>, model: TodoItem, idx: number, ): wecco.ElementUpdate {
+    const onChange = (e: InputEvent) => ctx.emit({
             command: "update", 
             index: idx,
             field: "summary",
             value: (e.target as HTMLInputElement).value,
         })
 
-    const markAsComplete = () => context.emit({
+    const markAsComplete = () => ctx.emit({
         command: "update",
         index: idx,
         field: "complete",
         value: true,
     })
 
-    const remove = () => context.emit({
+    const remove = () => ctx.emit({
         command: "delete",
         index: idx,
     })
@@ -138,7 +138,7 @@ function item_view(model: TodoItem, idx: number, context: wecco.AppContext<Messa
                     : wecco.html`<h5 class="card-title">${model.summary}</h5>`
             }          
             ${model.complete ? "" : wecco.html`<a @click=${markAsComplete} class="btn btn-primary"><i class="material-icons">check_circle</i></a>`}
-            <date-picker value=${model.dueDate?.toISOString()} @date-selected=${(e: CustomEvent) => { context.emit({
+            <date-picker value=${model.dueDate?.toISOString()} @date-selected=${(e: CustomEvent) => { ctx.emit({
                 command: "update",
                 index: idx,
                 field: "dueDate",
@@ -153,7 +153,7 @@ function item_view(model: TodoItem, idx: number, context: wecco.AppContext<Messa
 
 const store = new Store("wecco.examples.todos")
 
-function update(model: TodoList, message: Message): TodoList {
+function update(ctx: wecco.AppContext<Message>, model: TodoList, message: Message): TodoList {
     switch (message.command) {
         case "add":
             model = model.addItem(new TodoItem("", false, null, true))

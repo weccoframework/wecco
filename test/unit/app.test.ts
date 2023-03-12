@@ -30,12 +30,12 @@ describe("app.ts", () => {
     type Model = string
     type Message = string
 
-    const view = (m: Model, ctx: AppContext<Model>): ElementUpdate => {
+    const view = (ctx: AppContext<Model>, m: Model): ElementUpdate => {
         return html`<p>${m}</p>`
     }
 
     describe("synchronous update", () => {
-        const update = (m: Model, msg: Message, ctx: AppContext<Model>): Model => {
+        const update = (ctx: AppContext<Model>, m: Model, msg: Message): Model => {
             return msg
         }
     
@@ -53,7 +53,7 @@ describe("app.ts", () => {
         })
     
         it("should change nothing when update returns no model change sentinel value", () => {        
-            const ctx = app(() => "hello, world", (m: Model, msg: Message, ctx: AppContext<Model>) => NoModelChange, view, document.body)
+            const ctx = app(() => "hello, world", (ctx: AppContext<Model>, m: Model, msg: Message) => NoModelChange, view, document.body)
             ctx.emit("hello, update")
     
             expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello, world</p>")
@@ -61,7 +61,7 @@ describe("app.ts", () => {
     })
 
     describe("asynchronous update", () => {
-        const update = (m: Model, msg: Message, ctx: AppContext<Model>): Promise<Model> => {
+        const update = (ctx: AppContext<Model>, m: Model, msg: Message): Promise<Model> => {
             return Promise.resolve(msg)
         }
     
@@ -89,7 +89,7 @@ describe("app.ts", () => {
         })
     
         it("should change nothing when update returns no model change sentinel value", () => {        
-            const ctx = app(() => Promise.resolve("hello, world"), (m: Model, msg: Message, ctx: AppContext<Model>) => Promise.resolve(NoModelChange), view, document.body)
+            const ctx = app(() => Promise.resolve("hello, world"), (ctx: AppContext<Model>, m: Model, msg: Message) => Promise.resolve(NoModelChange), view, document.body)
             ctx.emit("hello, update")
 
             return new Promise(resolve => {

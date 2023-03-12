@@ -2,14 +2,12 @@
     "name": "@weccoframework/examples",
     "version": "0.1.0",
     "devDependencies": {
+        "@weccoframework/core": "file:..",
         "typescript": "^4.9.5",
-        "webpack": "^5.75.0",
-        "webpack-dev-server": "^4.11.1",
-        "webpack-cli": "^5.0.1",
-        "ts-loader": "^9.4.2",
-        "tsconfig-paths-webpack-plugin": "^4.0.0"
+        "webpack": "^5.76.1",
+        "vite": "^4.1.4"
     },
     "scripts": {
-        "start": "webpack serve"
+        "start": "vite"
     }
 }

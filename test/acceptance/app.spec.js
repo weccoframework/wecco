@@ -34,13 +34,13 @@ test.describe("app", () => {
                 }
             }
 
-            function update(model) {
+            function update(ctx, model, message) {
                 return model.inc()
             }
 
-            function view(model, context) {
+            function view(ctx, model) {
                 return wecco.html`<p>
-                    <button class="btn btn-primary" @click=${() => context.emit("inc")}>
+                    <button class="btn btn-primary" @click=${() => ctx.emit("inc")}>
                         You clicked me ${model.count} times
                     </button>
                 </p>`

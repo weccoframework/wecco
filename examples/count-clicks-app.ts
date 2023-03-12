@@ -10,15 +10,15 @@ class Model {
 
 type Message = "inc"
 
-function update(model: Model, message: Message): Model {
+function update(ctx: wecco.AppContext<Message>, model: Model, message: Message): Model {
     return model.inc()
 }
 
-function view (model: Model, context: wecco.AppContext<Message>) {
+function view (ctx: wecco.AppContext<Message>, model: Model) {
     return wecco.html`
     <p>${model.explanation}</p>
     <p>
-        <button class="btn btn-primary" @click=${() => context.emit("inc")}>
+        <button class="btn btn-primary" @click=${() => ctx.emit("inc")}>
             You clicked me ${model.count} times
         </button>
     </p>`

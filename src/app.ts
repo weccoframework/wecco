@@ -39,8 +39,12 @@ export type ModelInitializer<MODEL> = () => MODEL | Promise<MODEL>
  * A function that updates a model based on messages passed to it.
  * The function may produce a new model or modify the given model in place.
  * This type is generic on the model's and message's type.
+ * @param ctx the app context
+ * @param model the current model
+ * @param message the message that caused this invocation of the updater
+ * @returns the model result to render
  */
-export type Updater<MODEL, MESSAGE> = (model: MODEL, message: MESSAGE, context: AppContext<MESSAGE>) => ModelResult<MODEL>
+export type Updater<MODEL, MESSAGE> = (ctx: AppContext<MESSAGE>, model: MODEL, message: MESSAGE) => ModelResult<MODEL>
 
 /**
  * Interface for a context object which can be used to control an app by sending messages.
@@ -53,11 +57,11 @@ export interface AppContext<M> {
 /**
  * A function that takes a model and an app context and produces a ViewResult.
  * The type is generic on both the model's and message's type.
+ * @param ctx the app context to emit messages
  * @param model the model to render a view for
- * @param context the context used to emit messages
- * @return the result of the rendering process
+ * @returns the result of the rendering process
  */
-export type View<MODEL, MESSAGE> = (model: MODEL, context: AppContext<MESSAGE>) => ElementUpdate
+export type View<MODEL, MESSAGE> = (ctx: AppContext<MESSAGE>, model: MODEL) => ElementUpdate
 
 /**
  * Creates a new app using the given components.
@@ -91,7 +95,7 @@ class AppContextImpl<MODEL, MESSAGE> implements AppContext<MESSAGE> {
     }
 
     emit(message: MESSAGE) {
-        const result = this.updater(this.model, message, this)
+        const result = this.updater(this, this.model, message)
         if (isPromise<MODEL>(result)) {
             result
                 .then(m => this.applyModel(m))
@@ -112,7 +116,7 @@ class AppContextImpl<MODEL, MESSAGE> implements AppContext<MESSAGE> {
     }
 
     private performUpdate() {
-        updateElement(this.mountPoint, this.view(this.model, this))
+        updateElement(this.mountPoint, this.view(this, this.model))
     }
 }
 
