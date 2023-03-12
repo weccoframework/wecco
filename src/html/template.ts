@@ -307,10 +307,13 @@ class NodeBinding extends BindingBase {
             return
         }
 
-        if (typeof dataItem === "string") {
+        if (typeof(dataItem) === "undefined" || dataItem === null) {
+            // undefined/null are special and should be rendered as no content.
+            this.applyText("")
+        } else if (typeof dataItem === "string") {
             // Check strings first, as strings are also iterable and
             // ElementUpdates. As we need some special string handling,
-            // we check this first
+            // we check this first.
             this.applyText(dataItem)
         } else if (isIterable(dataItem)) {
             this.applyIterable(dataItem)

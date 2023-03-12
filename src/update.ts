@@ -205,5 +205,5 @@ function executeElementUpdate(targetElement: UpdateTarget, request: ElementUpdat
 }
 
 function isElementUpdater(request: ElementUpdate): request is ElementUpdater {
-    return (typeof request === "object") && ("updateElement" in request)
+    return (request !== null) && (typeof request === "object") && ("updateElement" in request)
 }

@@ -68,6 +68,18 @@ describe("html.ts", async () => {
     
                 expect(removeMarkerComments(document.body.innerHTML)).toBe(`<p>Hello, world!</p>`)
             })
+
+            it("should render null as nothing", () => {    
+                updateElement(document.body, html`<p>${null}</p>`)
+    
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<p></p>`)
+            })
+
+            it("should render undefined as nothing", () => {    
+                updateElement(document.body, html`<p>${undefined}</p>`)
+    
+                expect(removeMarkerComments(document.body.innerHTML)).toBe(`<p></p>`)
+            })
         })
 
         describe("attributes", () => {
