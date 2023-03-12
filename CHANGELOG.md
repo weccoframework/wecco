@@ -1,5 +1,17 @@
 # Changelog
 
+# Version 0.22.0
+
+**Breaking Change**: This version contains an API change that breaks with prior
+versions.
+
+* Change signature of _app_ functions to always receive `ctx` as the first
+  parameter. This allows a very much easier use of `bind` when building views.
+* `null` is allowed for functions that return an `ElementUpdate`. A `null` value
+  causes no change in the element`s DOM.
+* Minor dev dependency upgrades
+* Example uses vite.js (instead of webpack)
+
 # Version 0.21.7
 
 * Upgraded several dependencies (security fixes)
