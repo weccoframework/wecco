@@ -21,8 +21,8 @@ const { mkdirSync, statSync } = require("fs")
 
 const express = require("express")
 const rollup = require("rollup")
-const typescript = require("rollup-plugin-typescript2")
-const commonjs = require("rollup-plugin-commonjs")
+const typescript = require("@rollup/plugin-typescript")
+const commonjs = require("@rollup/plugin-commonjs")
 
 const reportsDirectory = resolve(process.cwd(), "reports")
 try {
@@ -37,10 +37,8 @@ rollup.rollup({
     input: "./index.ts",
     plugins: [
         typescript({
-            tsconfigOverride: {
-                compilerOptions: {
-                    module: "ESNext",
-                },
+            compilerOptions: {
+                module: "ESNext",
             },
         }),
         commonjs(),
@@ -70,16 +68,16 @@ rollup.rollup({
                         </html>
                     `)
         })
-        
+
         app.get("/wecco-core.js", async (req, res) => {
             res
                 .status(200)
                 .contentType("text/javascript")
                 .send(jsSource)
         })
-        
+
         const server = app.listen(8888)
-        
+
         process.on("exit", () => {
             server.close()
         })
