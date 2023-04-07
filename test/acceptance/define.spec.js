@@ -96,6 +96,26 @@ test.describe("define", () => {
             expect(text).toBe("changed")
         })
 
+        test("should bind data property changes to html attribute values and stringify values", async ({ page }) => {
+            await page.goto(".")
+            await page.evaluate(() => {
+                wecco.define("test-component", (data, context) => {
+                    if (data.text !== "changed") {
+                        setTimeout(() => {
+                            data.text = null
+                            context.requestUpdate()
+                        }, 1)
+                    }
+                    return wecco.html`<p>${data.text}</p>`
+                }, "text")
+                document.querySelector("#app").innerHTML = "<test-component text='foo bar'></test-component>"
+            })
+
+            await sleep(10)
+            const text = await page.$eval("#app test-component", e => e.getAttribute("text"))
+            expect(text).toBe("")
+        })
+
         test("should emit custom events", async ({ page }) => {
             await page.goto(".")
             await page.evaluate(() => {

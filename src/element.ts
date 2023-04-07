@@ -208,7 +208,7 @@ export abstract class WeccoElement<T> extends HTMLElement {
                 const observed = (this as any).observedAttributes as Array<string>;
                 Object.keys(this.data).forEach(k => {
                     if (observed.indexOf(k) > -1) {
-                        this.setAttribute(attributeNameForModelKey(k), (this.data as any)[k])
+                        this.setAttribute(attributeNameForModelKey(k), stringifyAttributeValue((this.data as any)[k]))
                     }
                 })
                 this.updateDom()
@@ -221,6 +221,18 @@ export abstract class WeccoElement<T> extends HTMLElement {
 
         updateElement(this, elementUpdate)
     }
+}
+
+function stringifyAttributeValue (v: any): string {
+    if (!v) {
+        return ""
+    }
+
+    if (typeof v === "string") {
+        return v
+    }
+
+    return `${v}`
 }
 
 /**
