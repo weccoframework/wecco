@@ -1,5 +1,7 @@
 import * as wecco from "@weccoframework/core"
 
+import "./datepicker"
+
 // -- Models
 
 class TodoList {
@@ -97,13 +99,18 @@ class Store {
 
 function view(ctx: wecco.AppContext<Message>, model: TodoList): wecco.ElementUpdate {
     return wecco.html`
-        <h2>${model.title || "Todos"}</h2>
-        <div>
-            ${model.items.map(itemView.bind(null, ctx))}
+        <div class="flex flex-row justify-between mb-2">
+            <h2 class="font-bold text-lg">${model.title || "Todos"}</h2>
+
+            <button 
+                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full"
+                @click=${() => ctx.emit({ command: "add" })}>
+                <i class="material-icons">add</i>
+            </button>
         </div>
         
-        <div class="mt-2 text-right">
-            <button class="btn btn-primary" @click=${() => ctx.emit({ command: "add" })}><i class="material-icons">add</i></button>
+        <div>
+            ${model.items.map(itemView.bind(null, ctx))}
         </div>
     `
 }
@@ -128,30 +135,41 @@ function itemView(ctx: wecco.AppContext<Message>, model: TodoItem, idx: number, 
         index: idx,
     })
 
-    return wecco.html`
-    <div class="card">
-        <div class="card-body">
-            ${model.editing 
-                ? wecco.html`<input type="text" class="form-control" @change=${onChange} autofocus placeholder="Summary">` 
-                : model.complete
-                    ? wecco.html`<h5 class="card-title complete">${model.summary}</h5>`
-                    : wecco.html`<h5 class="card-title">${model.summary}</h5>`
-            }          
-            ${model.complete ? "" : wecco.html`<a @click=${markAsComplete} class="btn btn-primary"><i class="material-icons">check_circle</i></a>`}
-            <date-picker value=${model.dueDate?.toISOString()} @date-selected=${(e: CustomEvent) => { ctx.emit({
-                command: "update",
-                index: idx,
-                field: "dueDate",
-                value: e.detail,
-            })}} message="Select due date"></date-picker>
-            <a @click=${remove} class="btn btn-danger"><i class="material-icons">delete</i></a>
-        </div>
-    </div>`
+    let main
+
+    if (model.editing) {
+        main = wecco.html`<input 
+            type="text" 
+            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:ring ring-blue-600"
+            @change=${onChange} autofocus placeholder="Summary" autofocus>`
+    } else if (model.complete) {
+        main = wecco.html`
+            <div class="font-bold line-through mb-4">${model.summary}</div>
+            <a @click=${remove} class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-full"><i class="material-icons">delete</i></a>            
+        `
+    } else {
+        main = wecco.html`
+            <div class="font-bold mb-4">${model.summary}</div>
+            <div class="gap">
+                <a @click=${markAsComplete} class="text-sm bg-gray-400 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-full"><i class="material-icons">check</i></a>
+                
+                <date-picker value=${model.dueDate?.toISOString()} @date-selected=${(e: CustomEvent) => { ctx.emit({
+                    command: "update",
+                    index: idx,
+                    field: "dueDate",
+                    value: e.detail,
+                })}}><span class="material-icons">calendar</span></date-picker>
+                <a @click=${remove} class="text-sm bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-full"><i class="material-icons">delete</i></a>
+            </div>
+        `
+    }
+
+    return wecco.html`<div class="border rounded p-2 mb-2 shadow">${main}</div>`
 }
 
 // Controller
 
-const store = new Store("wecco.examples.todos")
+const store = new Store("@weccoframework/examples/todos")
 
 function update(ctx: wecco.AppContext<Message>, model: TodoList, message: Message): TodoList {
     switch (message.command) {

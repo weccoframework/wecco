@@ -1,0 +1,9 @@
+@import 'material-icons/iconfont/material-icons.css';
+
+.material-icons {
+    vertical-align: middle;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

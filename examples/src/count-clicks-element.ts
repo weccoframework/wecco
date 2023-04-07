@@ -10,7 +10,9 @@ const CountClicks = wecco.define("count-clicks", (data: CountClicks, context) =>
     }
 
     return wecco.html`<p>
-        <button class="btn btn-primary" @click=${() => { data.count++; context.requestUpdate(); }}>
+        <button 
+            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" 
+            @click=${() => { data.count++; context.requestUpdate(); }}>
             You clicked me ${data.count} times
         </button>
     </p>`

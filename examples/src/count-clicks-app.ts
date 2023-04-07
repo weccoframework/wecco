@@ -16,9 +16,11 @@ function update(ctx: wecco.AppContext<Message>, model: Model, message: Message):
 
 function view (ctx: wecco.AppContext<Message>, model: Model) {
     return wecco.html`
-    <p>${model.explanation}</p>
+    <p class="text-sm">${model.explanation}</p>
     <p>
-        <button class="btn btn-primary" @click=${() => ctx.emit("inc")}>
+        <button 
+            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+            @click=${() => ctx.emit("inc")}>
             You clicked me ${model.count} times
         </button>
     </p>`
