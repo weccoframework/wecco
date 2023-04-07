@@ -1,5 +1,11 @@
 # Changelog
 
+# Version 0.22.2
+
+* Fix handling of `null` and `undefined` when updating bound attributes of custom elements
+* Improve bundles
+* Rework examples
+
 # Version 0.22.1
 
 * Fix `null` value error when using `null` inside a placeholder of `wecco.html`
