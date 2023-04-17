@@ -82,33 +82,33 @@ export abstract class WeccoElement<T> extends HTMLElement {
     protected abstract get observedAttributes(): Array<keyof T>
 
     /** The bound data */
-    private data: T = {} as T
+    private _data: T = {} as T
 
     /** Flag that marks whether this component is connected to the DOM or not. */
-    private connected = false
+    private _connected = false
 
     /** The render context instance to use */
-    private renderContext: RenderContext = new WeccoElementRenderContext(this)
+    private _renderContext: RenderContext = new WeccoElementRenderContext(this)
 
     /** Flag that marks whether an update has been requested */
-    private updateRequested = false
+    private _updateRequested = false
 
     /** 
      * A set of ids of callbacks provided to `RenderContext.once` that have been executed.
      */
-    private executedOnceCallbackIds = new Set<string>()
+    private _executedOnceCallbackIds = new Set<string>()
 
     /**
      * Partially updates the bound data with the data given in `data`.
      * @param data the partial data to update
      * @returns this to enable invocation chaining
      */
-    setData(data: Partial<T>): WeccoElement<T> {
+    setData(data?: Partial<T>): WeccoElement<T> {
         if (data) {
-            Object.keys(data).forEach(k => (this.data as any)[k] = (data as any)[k])
+            Object.keys(data).forEach(k => (this._data as any)[k] = (data as any)[k])
         }
 
-        if (this.connected) {
+        if (this._connected) {
             this.requestUpdate()
         }
 
@@ -130,11 +130,11 @@ export abstract class WeccoElement<T> extends HTMLElement {
      * @returns this to enable invocation chaining
      */
     requestUpdate: () => WeccoElement<T> = () => {
-        if (this.updateRequested) {
+        if (this._updateRequested) {
             return
         }
 
-        this.updateRequested = true
+        this._updateRequested = true
         setTimeout(this.executeUpdate.bind(this), 1)
         return this
     }
@@ -156,11 +156,11 @@ export abstract class WeccoElement<T> extends HTMLElement {
     connectedCallback() {
         Array.prototype.forEach.call(this.attributes, (attr: Attr) => {
             if (this.observedAttributes.indexOf(attr.name as any) !== -1) {
-                (this.data as any)[attr.name] = attr.value
+                (this._data as any)[attr.name] = attr.value
             }
         })
 
-        this.connected = true
+        this._connected = true
 
         this.updateDom()
     }
@@ -170,7 +170,7 @@ export abstract class WeccoElement<T> extends HTMLElement {
      */
     disconnectedCallback() {
         this.childNodes.forEach(this.removeChild.bind(this))
-        this.connected = false
+        this._connected = false
     }
 
     /**
@@ -183,11 +183,11 @@ export abstract class WeccoElement<T> extends HTMLElement {
     }
 
     registerOnceCallback(id: string, callback: OnceCallback) {
-        if (this.executedOnceCallbackIds.has(id)) {
+        if (this._executedOnceCallbackIds.has(id)) {
             return
         }
 
-        this.executedOnceCallbackIds.add(id)
+        this._executedOnceCallbackIds.add(id)
 
         Promise.resolve()
             .then(() => {
@@ -199,16 +199,16 @@ export abstract class WeccoElement<T> extends HTMLElement {
      * `executeUpdate` performs an update in case the dirty flag has been set.
      */
     private executeUpdate() {
-        if (!this.updateRequested) {
+        if (!this._updateRequested) {
             return
         }
 
         Promise.resolve()
             .then(() => {
                 const observed = (this as any).observedAttributes as Array<string>;
-                Object.keys(this.data).forEach(k => {
+                Object.keys(this._data).forEach(k => {
                     if (observed.indexOf(k) > -1) {
-                        this.setAttribute(attributeNameForModelKey(k), stringifyAttributeValue((this.data as any)[k]))
+                        this.setAttribute(attributeNameForModelKey(k), stringifyAttributeValue((this._data as any)[k]))
                     }
                 })
                 this.updateDom()
@@ -216,8 +216,8 @@ export abstract class WeccoElement<T> extends HTMLElement {
     }
 
     private updateDom() {
-        const elementUpdate = this.renderCallback(this.data || ({} as T), this.renderContext)
-        this.updateRequested = false
+        const elementUpdate = this.renderCallback(this._data || ({} as T), this._renderContext)
+        this._updateRequested = false
 
         updateElement(this, elementUpdate)
     }
@@ -262,23 +262,48 @@ class WeccoElementRenderContext<T> implements RenderContext {
     }
 }
 
-export function define<T>(name: string, renderCallback: RenderCallback<T>, observedAttribute: keyof T): ComponentFactory<T>
-export function define<T>(name: string, renderCallback: RenderCallback<T>, ...observedAttribute: Array<keyof T>): ComponentFactory<T>
-export function define<T>(name: string, renderCallback: RenderCallback<T>, observedAttributes: Array<keyof T>): ComponentFactory<T>
+/**
+ * Additional options that may be passed to `define`. 
+ * @param T the type of data being used to define the component
+ */
+export interface DefineOptions<T> {
+    /** List of element attributes (shown up in HTML) to observe and bind to data fields */
+    observedAttributes?: Array<keyof T>
+    /** List of element Javascript properties to observe and bind to data fields */
+    observedProperties?: Array<keyof T>
+}
 
 /**
  * `define` is used to define a new wecco component which is also a custom element.
  * The render callback provided to define will be called whenever the element`s content needs to be updated.
  * @param name the name of the custom element. Must follow the custom element specs (i.e. the name must contain a dash)
  * @param renderCallback the render callback
- * @param observedAttributes list of attribute names to observe for changes and bind to data
+ * @param options additional options used to customize the element
  * @returns an instance of a `ComponentFactory` which can produce instances of the defined component
  */
-export function define<T>(name: string, renderCallback: RenderCallback<T>, ...observedAttributes: Array<Array<keyof T> | keyof T>): ComponentFactory<T> {
-    const observedAttributesValue: Array<keyof T> = observedAttributes.map(a => Array.isArray(a) ? a : [a]).reduce((a, v) => a.concat(v), [])
+export function define<T>(name: string, renderCallback: RenderCallback<T>, options?: DefineOptions<T>): ComponentFactory<T> {
+    const observedAttributesValue: Array<keyof T> = options?.observedAttributes?.map(a => Array.isArray(a) ? a : [a]).reduce((a, v) => a.concat(v), []) ?? []
     const observedAttributeNames = observedAttributesValue.map(v => attributeNameForModelKey(v as string))
 
     window.customElements.define(name, class extends WeccoElement<T> {
+
+        constructor () {
+            super()
+
+            options?.observedProperties?.forEach(p => {
+                Object.defineProperty(this, p, {
+                    configurable: false,
+                    enumerable: true,
+                    get() {
+                        return this._data[p]
+                    },
+                    set(newValue: any) {
+                        this.setData({[p]: newValue})
+                    }
+                })
+            })
+        }
+
         protected renderCallback = renderCallback
         protected observedAttributes = observedAttributesValue
 
@@ -372,10 +397,10 @@ function modelKeyForAttributeName(attributeName: string): string {
 export function component<T>(componentName: string, data?: T, host?: string | Element): WeccoElement<T> {
     const el = document.createElement(componentName) as WeccoElement<T>
 
-    if (!(el instanceof WeccoElement)) {
-        console.error("Element is not a defined Weco element:", el)
-        return
-    }
+    // if (!(el instanceof WeccoElement)) {
+    //     console.error("Element is not a defined Weco element:", el)
+    //     return
+    // }
 
     el.setData(data)
 
