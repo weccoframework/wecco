@@ -16,20 +16,10 @@
  * limitations under the License.
  */
 
-const { resolve } = require("path")
-const { mkdirSync, statSync } = require("fs")
-
 const express = require("express")
 const rollup = require("rollup")
 const typescript = require("@rollup/plugin-typescript")
 const commonjs = require("@rollup/plugin-commonjs")
-
-const reportsDirectory = resolve(process.cwd(), "reports")
-try {
-    statSync(reportsDirectory)
-} catch (e) {
-    mkdirSync(reportsDirectory, { recursive: true })
-}
 
 let jsSource
 

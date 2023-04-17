@@ -36,8 +36,9 @@
         "build": "rollup -c",
         "watch": "rollup -c -w",
         "test": "mocha --require ts-node/register --require jsdom-global/register test/unit/**/*.test.ts",
-        "acceptance-test": "playwright test",
+        "acceptance-test": "playwright test --project=acceptance",
         "acceptance-test-server": "node test/acceptance/test-server",
+        "performance-test": "playwright test --project=performance",
         "coverage": "nyc mocha --require ts-node/register --require jsdom-global/register test/unit/**/*.test.ts",
         "lint": "tslint -p tslint.json"
     },

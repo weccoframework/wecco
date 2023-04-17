@@ -12,8 +12,13 @@ export default defineConfig({
     },
     projects: [
         {
-          name: "Integration Tests",
+          name: "acceptance",
           testMatch: /test\/acceptance\/.*.spec.[js|ts]/,
+          retries: 0,
+        },
+        {
+          name: "performance",
+          testMatch: /test\/performance\/.*.spec.[js|ts]/,
           retries: 0,
         },
     ],    

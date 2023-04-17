@@ -70,6 +70,9 @@ export type RenderCallback<T> = (data: T, context: RenderContext) => ElementUpda
  */
 export type ComponentFactory<T> = (data?: T, host?: string | Element) => WeccoElement<T>
 
+/** Custom event name dispatched by a wecco custom element when redering is complete */
+export type RenderingCompleteEvent = "renderingComplete"
+
 /**
  * `WeccoElement` defines the base class for all custom elements created by wecco.
  * Subclasses of this class are generated for each element which gets `define`d. They conform to the custom web components protocol.
@@ -135,7 +138,7 @@ export abstract class WeccoElement<T> extends HTMLElement {
         }
 
         this._updateRequested = true
-        setTimeout(this.executeUpdate.bind(this), 1)
+        Promise.resolve().then(this.executeUpdate.bind(this))
         return this
     }
 
@@ -220,6 +223,7 @@ export abstract class WeccoElement<T> extends HTMLElement {
         this._updateRequested = false
 
         updateElement(this, elementUpdate)
+        this.dispatchEvent(new CustomEvent("renderingComplete"))
     }
 }
 
@@ -396,11 +400,6 @@ function modelKeyForAttributeName(attributeName: string): string {
  */
 export function component<T>(componentName: string, data?: T, host?: string | Element): WeccoElement<T> {
     const el = document.createElement(componentName) as WeccoElement<T>
-
-    // if (!(el instanceof WeccoElement)) {
-    //     console.error("Element is not a defined Weco element:", el)
-    //     return
-    // }
 
     el.setData(data)
 
