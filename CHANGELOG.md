@@ -1,5 +1,15 @@
 # Changelog
 
+# Version 0.23.0
+
+**Breaking Change**: This version contains an API change that breaks with prior
+versions.
+
+* `define` accepts an object as the optional last parameter allowing you to set
+  observed (HTML element) attributes as well as observed (JavaScript element)
+  properties
+* Added performance tests to benchmark render performance
+
 # Version 0.22.2
 
 * Fix handling of `null` and `undefined` when updating bound attributes of custom elements
