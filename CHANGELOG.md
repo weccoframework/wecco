@@ -1,5 +1,12 @@
 # Changelog
 
+# Version 0.24.0
+
+* `updateElement` emits custom events `updatestart` and `updateend` to notify listeners when an update is
+  applied to an element
+* custom elements created using `define` emit custom events `connect` and `disconnect` to notify listeners
+  when the custom element is connected/disconnected from the DOM
+
 # Version 0.23.0
 
 **Breaking Change**: This version contains an API change that breaks with prior
