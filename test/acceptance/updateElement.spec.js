@@ -126,7 +126,7 @@ test.describe("updateElement", () => {
         })        
     })
 
-    test.describe("update event", () => {
+    test.describe("events", () => {
         test("should invoke @update only once per update cycle", async ({page}) => {
             await page.goto(".")
             await page.evaluate(() => {
@@ -168,6 +168,30 @@ test.describe("updateElement", () => {
 
             const updateCalled = await page.evaluate(() => window.updateCalled)
             expect(updateCalled).toBe(1)
+        })
+
+        test("should invoke updatestart and updateend", async({page}) => {
+            await page.goto(".")
+            await page.evaluate(() => {
+                const div = document.createElement("div")
+                document.body.appendChild(div)
+                window.updatestartCalled = false
+                window.updateendCalled = false
+                div.addEventListener("updatestart", () => {
+                    window.updatestartCalled = true
+                })
+                div.addEventListener("updateend", () => {
+                    window.updateendCalled = true
+                })
+                wecco.updateElement(div, "test")
+            })
+            await page.waitForTimeout(10)
+            const [updatestartCalled, updateendCalled] = await page.evaluate(() => {
+                return [window.updatestartCalled, window.updateendCalled]
+            })
+
+            expect(updatestartCalled).toBe(true)
+            expect(updateendCalled).toBe(true)
         })
     })
 

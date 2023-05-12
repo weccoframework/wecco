@@ -141,6 +141,34 @@ test.describe("define", () => {
             expect(detail).toBe("foobar")
         })
 
+        test("should emit connect/disconnect events", async ({ page }) => {
+            await page.goto(".")
+            await page.evaluate(() => {
+                window._connectReceived = false
+                window._disconnectReceived = false
+
+                document.addEventListener("connect", e => {
+                    window._connectReceived = true
+                })
+
+                wecco.define("test-component", (_, ctx) => {
+                    ctx.addEventListener("disconnect", e => {
+                        window._disconnectReceived = true
+                    })
+    
+                    return "test"
+                })
+
+                document.querySelector("#app").innerHTML = "<test-component></test-component>"
+                setTimeout(() => document.querySelector("#app").innerHTML = "", 5)
+            })
+
+            await sleep(40)
+            const [connectReceived, disconnectReceived] = await page.evaluate(() => [window._connectReceived, window._disconnectReceived])
+            expect(connectReceived).toBe(true)
+            expect(disconnectReceived).toBe(true)
+        })
+
         test("should emit and subscribe for custom events", async ({ page }) => {
             await page.goto(".")
             await page.evaluate(() => {

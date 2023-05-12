@@ -166,6 +166,7 @@ export abstract class WeccoElement<T> extends HTMLElement {
         this._connected = true
 
         this.updateDom()
+        this.emit("connect")
     }
 
     /**
@@ -174,6 +175,7 @@ export abstract class WeccoElement<T> extends HTMLElement {
     disconnectedCallback() {
         this.childNodes.forEach(this.removeChild.bind(this))
         this._connected = false
+        this.emit("disconnect")
     }
 
     /**
@@ -203,6 +205,10 @@ export abstract class WeccoElement<T> extends HTMLElement {
      */
     private executeUpdate() {
         if (!this._updateRequested) {
+            return
+        }
+
+        if (!this._connected) {
             return
         }
 

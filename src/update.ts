@@ -52,7 +52,7 @@ export interface ElementUpdater {
  * - `ElementUpdateFunction` or `ElementUpdater` are applied
  * - arrays of the afore mentioned are applied in sequence
  */
-export type ElementUpdate = null | string | Element | ElementUpdateFunction | ElementUpdater | Array<ElementUpdate>
+export type ElementUpdate = null | string | Element | ElementUpdateFunction | ElementUpdater | Array<ElementUpdate>
 
 /**
  * `isElementUpdate` is a type guard that checks whether the given argument is an `ElementUpdate`.
@@ -76,16 +76,27 @@ export function updateElement(target: UpdateTarget | ElementSelector, request: E
         ? resolve(target)
         : target
 
-    // Execute the update. Never let a downstream updater
-    // send an update notification.
-    executeElementUpdate(targetElement, request)
+    targetElement.dispatchEvent(new CustomEvent(CustomEventUpdateStart, { bubbles: false }))
 
-    // If this call is the root of the update cycle, send
-    // the update notification.
-    if (notifyUpdated) {
-        sendUpdateEvent(targetElement)
+    try {
+
+        // Execute the update. Never let a downstream updater
+        // send an update notification.
+        executeElementUpdate(targetElement, request)
+
+        // If this call is the root of the update cycle, send
+        // the update notification.
+        if (notifyUpdated) {
+            sendUpdateEvent(targetElement)
+        }
+    } finally {
+        targetElement.dispatchEvent(new CustomEvent(CustomEventUpdateEnd, { bubbles: false }))
     }
 }
+
+export const CustomEventUpdate = "update"
+export const CustomEventUpdateStart = "updatestart"
+export const CustomEventUpdateEnd = "updateend"
 
 /**
  * Dispatches an `update` event for every node found under `targetElement`.
@@ -103,7 +114,7 @@ function sendUpdateEvent(targetElement: UpdateTarget): void {
     let treeWalker = document.createTreeWalker(targetElement, NodeFilter.SHOW_ELEMENT, ExcludeCustomElementsFilter)
     let e: Node
     while (e = treeWalker.nextNode()) {
-        (e as EventTarget).dispatchEvent(new CustomEvent("update", {
+        (e as EventTarget).dispatchEvent(new CustomEvent(CustomEventUpdate, {
             // Don't let the event bubble up the DOM. An individual event
             // will be dispatched for every element that is part of the
             // update.
@@ -114,14 +125,13 @@ function sendUpdateEvent(targetElement: UpdateTarget): void {
     // Send update event for all custom elments but only custom elements alone - not their sub-trees.
     treeWalker = document.createTreeWalker(targetElement, NodeFilter.SHOW_ELEMENT, OnlyCustomElementsFilter)
     while (e = treeWalker.nextNode()) {
-        (e as EventTarget).dispatchEvent(new CustomEvent("update", {
+        (e as EventTarget).dispatchEvent(new CustomEvent(CustomEventUpdate, {
             // Don't let the event bubble up the DOM. An individual event
             // will be dispatched for every element that is part of the
             // update.
             bubbles: false,
         }))
     }
-
 }
 
 /**
