@@ -5,7 +5,6 @@
 [![Vulerabilities][vulnerabilities-img-url]][vulnerabilities-url]
 [![Dependencies][dependencies-img-url]][dependencies-url]
 
-
 `wecco` is a Web Framework based on web standards such as [Web Components](https://www.webcomponents.org/), 
 [HTML Templates](https://developer.mozilla.org/de/docs/Web/HTML/Element/template) and plain JavaScript that features
 
@@ -28,30 +27,37 @@ only 28k in size.
 
 > wecco is stil under heavy development and the API is not considered stable until release 1.0.0.
 
-## Installation
+# Installation
 
-### NPM
+## NPM
 
 `wecco` is available via npm as `@weccoframework/core`.
 
 You can also go to the [releases](https://github.com/weccoframework/core/releases) and download the tar ball 
 and install it manually.
 
-### Directly embedding in a HTML page
+## Directly embedding in a HTML page
 
-You can include the a bundled version of `wecco` into your web application. Simply go to the 
+You can include the a UMD version of `wecco` into your web application. Simply go to the 
 [releases](https://github.com/weccoframework/core/releases) and download the latest version
-of either the `umd` or `es5` bundle. To test a version, you can directly load the bundle
-from the github downloads, i.e.
+of the `umd`. To test a version, you can directly load the bundle from the github downloads, i.e.
 
 ```html
-<script src="https://github.com/weccoframework/core/releases/download/v0.21.1/weccoframework-core.es5.js"></script>
+<script src="https://github.com/weccoframework/core/releases/download/v0.25.0/weccoframework-core.js"></script>
 ```
+
+If you want to include `wecco` as a ES6 module, use the `.mjs` file, i.e.: 
+
+```html
+<script src="https://github.com/weccoframework/core/releases/download/v0.25.0/weccoframework-core.mjs"></script>
+```
+
 
 Please note, that this is _not_ recommended for any kind of production systems and should only be used during 
 development.
 
-## Usage
+
+# Usage
 
 The following code contains a full "app" for a button that counts the number of times a user clicked it.
 
@@ -141,7 +147,7 @@ wecco is written by Alexander Metzner <alexander.metzner@gmail.com>.
 # License
 
 ```
-Copyright (c) 2019 - 2021 The wecco authors.
+Copyright (c) 2019 - 2023 The wecco authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
