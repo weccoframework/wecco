@@ -2,30 +2,63 @@ import typescript from "@rollup/plugin-typescript"
 import commonjs from "@rollup/plugin-commonjs"
 import terser from '@rollup/plugin-terser'
 
-export default {
-    input: "./index.ts",
+export default [
+    {
+        input: "./index.ts",
 
-    output: [
-        {
-            file: `dist/index.mjs`,
-            name: "@weccoframework/core",
-            format: "es",
-            sourcemap: true
-        },
-        {
-            file: `dist/index.js`,
-            format: "cjs",
-            sourcemap: true
-        },
-    ],
-
-    plugins: [
-        typescript({
-            compilerOptions: {
-                module: "ESNext",
+        output: [
+            {
+                file: `dist/index.mjs`,
+                name: "@weccoframework/core",
+                format: "es",
+                sourcemap: true
             },
-        }),
-        commonjs(),
-        terser(),
-    ]
-}
+
+            {
+                file: `dist/index.js`,
+                format: "cjs",
+                sourcemap: true
+            },
+        ],
+
+        plugins: [
+            typescript({
+                compilerOptions: {
+                    module: "ESNext",
+                },
+            }),
+            commonjs(),
+        ]
+    },
+
+    {
+        input: "./index.ts",
+
+        output: [
+            {
+                file: "dist/weccoframework-core.js",
+                format: "umd",
+                name: "wecco",
+                sourcemap: true,
+            },
+
+            {
+                file: "dist/weccoframework-core.mjs",
+                name: "@weccoframework/core",
+                format: "es",
+                sourcemap: true,
+            },
+        ],
+
+        plugins: [
+            typescript({
+                compilerOptions: {
+                    module: "ESNext",
+                },
+            }),
+            commonjs(),
+            terser(),
+        ]
+    },
+
+]
