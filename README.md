@@ -26,6 +26,8 @@ size.
 
 > wecco is stil under heavy development and the API is not considered stable until release 1.0.0.
 
+See https://weccoframework.github.io for reference documentation on how to use `wecco`.
+
 # Installation
 
 ## NPM
@@ -51,10 +53,8 @@ If you want to include `wecco` as a ES6 module, use the `.mjs` file, i.e.:
 <script src="https://github.com/weccoframework/core/releases/download/v0.25.0/weccoframework-core.mjs"></script>
 ```
 
-
 Please note, that this is _not_ recommended for any kind of production systems and should only be used during 
 development.
-
 
 # Usage
 
@@ -144,6 +144,18 @@ const CountClicks = wecco.define<CountClicks>("count-clicks", ({ data, requestUp
 ```
 
 Check out the [examples](./examples) to see these two in action as well as the classical todo app.
+
+# Development
+
+This repository uses [npm workspaces](https://docs.npmjs.com/cli/v9/using-npm/workspaces?v=true#using-workspaces)
+to define several packages that power `wecco`. All of these packages will be published separately to npmjs but
+share the organization `@weccoframework`. Make sure you run `npm install` (or similar) from the root
+directory and not within any of the `packages`.
+
+The packages contained in this monorepo are:
+
+* [`@weccoframework/core`](./packages/core) - the core framework
+* [`@weccoframework/examples`](./packages/examples) - several examples using `wecco` as a standalone package
 
 # Author
 

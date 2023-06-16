@@ -27,8 +27,8 @@ jobs:
       
     - run: npm install
     - run: npx playwright install
-    - run: npm run build
-    - run: npm test
-    - run: npm run acceptance-test
-    - run: npm run coverage
-    - run: npm run performance-test
+    - run: npm run build --workspaces --if-present
+    - run: npm test --workspaces --if-present
+    - run: npm run acceptance-test --workspaces --if-present
+    - run: npm run coverage --workspaces --if-present
+    - run: npm run performance-test --workspaces --if-present

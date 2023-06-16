@@ -2,7 +2,7 @@
     "name": "@weccoframework/examples",
     "version": "0.1.0",
     "devDependencies": {
-        "@weccoframework/core": "file:..",
+        "@weccoframework/core": "~0.25.0",
         "typescript": "^5.0.3",
         "vite": "^4.2.3",
         "tailwindcss": "^3.3.1",
