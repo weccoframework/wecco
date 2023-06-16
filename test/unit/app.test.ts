@@ -17,7 +17,7 @@
  */
 
 import { expect } from "iko"
-import { app, AppContext, NoModelChange } from "../../src/app"
+import { createApp, NoModelChange, UpdaterContext, ViewContext } from "../../src/app"
 import { html } from "../../src/html"
 import { ElementUpdate } from "../../src/update"
 import { removeMarkerComments } from "./testutils"
@@ -30,55 +30,53 @@ describe("app.ts", () => {
     type Model = string
     type Message = string
 
-    const view = (ctx: AppContext<Model>, m: Model): ElementUpdate => {
-        return html`<p>${m}</p>`
+    const view = ({ model }: ViewContext<Model, Message>): ElementUpdate => {
+        return html`<p>${model}</p>`
     }
 
     describe("synchronous update", () => {
-        const update = (ctx: AppContext<Model>, m: Model, msg: Message): Model => {
-            return msg
+        const update = ({ message }: UpdaterContext<Model, Message>): Model => {
+            return message
         }
-    
+
         it("should render initial model", () => {
-            app(() => "hello, world", update, view, document.body)
-    
+            createApp(() => "hello, world", update, view).mount(document.body)
+
             expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello, world</p>")
         })
-    
+
         it("should apply update", () => {
-            const ctx = app(() => "hello, world", update, view, document.body)
-            ctx.emit("hello, update")
-    
+            const app = createApp(() => "hello, world", update, view).mount(document.body)
+            app.emit("hello, update")
+
             expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello, update</p>")
         })
-    
-        it("should change nothing when update returns no model change sentinel value", () => {        
-            const ctx = app(() => "hello, world", (ctx: AppContext<Model>, m: Model, msg: Message) => NoModelChange, view, document.body)
-            ctx.emit("hello, update")
-    
+
+        it("should change nothing when update returns no model change sentinel value", () => {
+            const app = createApp(() => "hello, world", (_) => NoModelChange, view).mount(document.body)
+            app.emit("hello, update")
+
             expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello, world</p>")
         })
     })
 
     describe("asynchronous update", () => {
-        const update = (ctx: AppContext<Model>, m: Model, msg: Message): Promise<Model> => {
-            return Promise.resolve(msg)
-        }
-    
+        const update = ({ message }: UpdaterContext<Model, Message>) => Promise.resolve(message)
+
         it("should render initial model", () => {
-            app(() => Promise.resolve("hello, world"), update, view, document.body)
+            createApp(() => Promise.resolve("hello, world"), update, view).mount(document.body)
 
             return new Promise(resolve => {
                 setTimeout(() => {
                     expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello, world</p>")
                     resolve(null)
                 }, 1)
-            })        
+            })
         })
-    
+
         it("should apply update", () => {
-            const ctx = app(() => Promise.resolve("hello, world"), update, view, document.body)
-            ctx.emit("hello, update")
+            const app = createApp(() => Promise.resolve("hello, world"), update, view).mount(document.body)
+            app.emit("hello, update")
 
             return new Promise(resolve => {
                 setTimeout(() => {
@@ -87,10 +85,10 @@ describe("app.ts", () => {
                 }, 1)
             })
         })
-    
-        it("should change nothing when update returns no model change sentinel value", () => {        
-            const ctx = app(() => Promise.resolve("hello, world"), (ctx: AppContext<Model>, m: Model, msg: Message) => Promise.resolve(NoModelChange), view, document.body)
-            ctx.emit("hello, update")
+
+        it("should change nothing when update returns no model change sentinel value", () => {
+            const app = createApp(() => Promise.resolve("hello, world"), () => Promise.resolve(NoModelChange), view).mount(document.body)
+            app.emit("hello, update")
 
             return new Promise(resolve => {
                 setTimeout(() => {

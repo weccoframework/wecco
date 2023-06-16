@@ -21,4 +21,4 @@ export { updateElement, ElementUpdate, ElementUpdateFunction, ElementUpdater, Up
 export { define, component, WeccoElement, NotifyUpdateCallback, RenderCallback, RenderContext } from "./src/element"
 export { shadow, DoWithShadowCallback } from "./src/shadow"
 export { html, HtmlTemplate } from "./src/html"
-export { AppContext, Updater, ModelInitializer, View, NoModelChange, app } from "./src/app"
+export { createApp, App, Updater, ModelInitializer, View, NoModelChange, ModelResult, UpdaterContext, ViewContext, MessageEmitter } from "./src/app"

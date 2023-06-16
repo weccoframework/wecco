@@ -23,67 +23,53 @@ test.describe("define", () => {
     test.describe("render", () => {
         test("should render static element", async ({ page }) => {
             await page.goto(".")
-            await page.evaluate(() => wecco.define("test-component", (data) => wecco.html`<p>${data.m}</p>`)({ m: "hello, world" }).mount("#app"))
-            await sleep()
-
-            const text = await page.$eval("#app p", e => e.innerText)
-            expect(text).toBe("hello, world")
+            await page.evaluate(() => wecco.define("test-component", ({data}) => wecco.html`<p>${data.m}</p>`)({ m: "hello, world" }).mount("#app"))
+            await expect(page.locator("#app p")).toHaveText("hello, world")
         })
 
         test("should render interactive element", async ({ page }) => {
             await page.goto(".")
             await page.evaluate(() => wecco
                 .define("test-component",
-                    (data, context) => wecco.html`<button @click=${() => { data.c++; context.requestUpdate() }}>${data.c}</button>`)({ c: 0 }).mount("#app"))
+                ({data, requestUpdate}) => wecco.html`<button @click=${() => { data.c++; requestUpdate() }}>${data.c}</button>`)({ c: 0 }).mount("#app"))
 
-            let text = await page.$eval("#app button", e => e.innerText)
-            expect(text).toBe("0")
-
-            const btn = await page.$("#app button")
+            const btn = page.locator("#app button")
+            await expect(btn).toHaveText("0")
+            
             await btn.click()
-
-            await sleep(5)
-
-            text = await page.$eval("#app button", e => e.innerText)
-            expect(text).toBe("1")
+            await expect(btn).toHaveText("1")
         })
 
         test("should rerender component when setData is called", async ({ page }) => {
             await page.goto(".")
             await page.evaluate(() => {
-                const c = wecco.define("test-component", data => wecco.html`<p>${data.c} ${data.m}</p>`)
+                const c = wecco.define("test-component", ({data}) => wecco.html`<p>${data.c} ${data.m}</p>`)
                 const e = c({ c: 0, m: "times" })
                 e.mount("#app")
                 e.setData({ c: 1 })
             })
 
-            await sleep()
-
-            const text = await page.$eval("#app p", e => e.innerText)
-            expect(text).toBe("1 times")
+            await expect(page.locator("#app p")).toHaveText("1 times")
         })
 
         test("should bind html attribute values to data properties", async ({ page }) => {
             await page.goto(".")
             await page.evaluate(() => {
-                wecco.define("test-component", data => wecco.html`<p>${data.text}</p>`, { observedAttributes: ["text"] })
+                wecco.define("test-component", ({data}) => wecco.html`<p>${data.text}</p>`, { observedAttributes: ["text"] })
                 document.querySelector("#app").innerHTML = "<test-component text='foo bar'></test-component>"
             })
 
-            await sleep()
-
-            const text = await page.$eval("#app p", e => e.innerText)
-            expect(text).toBe("foo bar")
+            await expect(page.locator("#app p")).toHaveText("foo bar")
         })
 
         test("should bind data property changes to html attribute values", async ({ page }) => {
             await page.goto(".")
             await page.evaluate(() => {
-                wecco.define("test-component", (data, context) => {
+                wecco.define("test-component", ({data, requestUpdate}) => {
                     if (data.text !== "changed") {
                         setTimeout(() => {
                             data.text = "changed"
-                            context.requestUpdate()
+                            requestUpdate()
                         }, 1)
                     }
                     return wecco.html`<p>${data.text}</p>`
@@ -91,19 +77,17 @@ test.describe("define", () => {
                 document.querySelector("#app").innerHTML = "<test-component text='foo bar'></test-component>"
             })
 
-            await sleep(10)
-            const text = await page.$eval("#app test-component", e => e.getAttribute("text"))
-            expect(text).toBe("changed")
+            await expect(page.locator("#app test-component")).toHaveAttribute("text", "changed")
         })
 
         test("should bind data property changes to html attribute values and stringify values", async ({ page }) => {
             await page.goto(".")
             await page.evaluate(() => {
-                wecco.define("test-component", (data, context) => {
+                wecco.define("test-component", ({data, requestUpdate}) => {
                     if (data.text !== "changed") {
                         setTimeout(() => {
                             data.text = null
-                            context.requestUpdate()
+                            requestUpdate()
                         }, 1)
                     }
                     return wecco.html`<p>${data.text}</p>`
@@ -111,9 +95,7 @@ test.describe("define", () => {
                 document.querySelector("#app").innerHTML = "<test-component text='foo bar'></test-component>"
             })
 
-            await sleep(10)
-            const text = await page.$eval("#app test-component", e => e.getAttribute("text"))
-            expect(text).toBe("")
+            await expect(page.locator("#app test-component")).toHaveAttribute("text", "")
         })
 
         test("should emit custom events", async ({ page }) => {
@@ -123,12 +105,12 @@ test.describe("define", () => {
                 document.addEventListener("test", e => {
                     window._receivedEvent = e.detail
                 })
-                wecco.define("test-component", (data, context) => {
+                wecco.define("test-component", ({data, emit, requestUpdate}) => {
                     if (!data.send) {
                         setTimeout(() => {
                             data.send = true
-                            context.emit("test", "foobar")
-                            context.requestUpdate()
+                            emit("test", "foobar")
+                            requestUpdate()
                         }, 1)
                     }
                     return "test"
@@ -151,8 +133,8 @@ test.describe("define", () => {
                     window._connectReceived = true
                 })
 
-                wecco.define("test-component", (_, ctx) => {
-                    ctx.addEventListener("disconnect", e => {
+                wecco.define("test-component", ({addEventListener}) => {
+                    addEventListener("disconnect", e => {
                         window._disconnectReceived = true
                     })
     
@@ -172,19 +154,19 @@ test.describe("define", () => {
         test("should emit and subscribe for custom events", async ({ page }) => {
             await page.goto(".")
             await page.evaluate(() => {
-                wecco.define("my-button", (data, context) => {
-                    return wecco.html`<button @click=${() => context.emit("click")}>${data.label}</button>`
+                wecco.define("my-button", ({data, emit}) => {
+                    return wecco.html`<button @click+preventDefault+stopPropagation=${() => emit("click")}>${data.label}</button>`
                 }, { observedAttributes: ["label"] })
 
-                wecco.define("count-clicks", (data, context) => {
-                    data.count = data.count || 0
+                wecco.define("count-clicks", (context) => {
+                    context.data.count = context.data.count || 0
                     context.addEventListener("click", () => {
-                        data.count++
+                        context.data.count++
                         context.requestUpdate()
                     })
 
                     return wecco.html`
-                    <p>You clicked me ${data.count} times.</p>
+                    <p>You clicked me ${context.data.count} times.</p>
                     <my-button label="Increment counter" />
                 `
                 })
@@ -192,13 +174,8 @@ test.describe("define", () => {
                 document.querySelector("#app").innerHTML = "<count-clicks/>"
             })
 
-            await page.evaluate(() => {
-                document.querySelector("button").dispatchEvent(new MouseEvent("click"))
-            })
-            await sleep()
-
-            const text = await page.$eval("#app count-clicks p", e => e.innerText)
-            expect(text).toBe("You clicked me 1 times.")
+            await page.locator("#app count-clicks my-button button").click()
+            await expect(page.locator("#app count-clicks p")).toHaveText("You clicked me 1 times.")
         })
 
         test("should invoke @update eventlistener after component has been updated (html syntax)", async ({ page }) => {
@@ -207,17 +184,15 @@ test.describe("define", () => {
                 wecco.define("my-component", () => wecco.html`<span @update=${e => e.target.innerText = "foo"}>bar</span>`)
                 document.querySelector("#app").innerHTML = "<my-component></my-component>"
             })
-            await sleep()
 
-            const text = await page.$eval("#app span", e => e.innerText)
-            expect(text).toBe("foo")
+            await expect(page.locator("#app span")).toHaveText("foo")
         })
 
         test("should invoke @update eventlistener after component has been updated (js api)", async ({ page }) => {
             await page.goto(".")
             await page.evaluate(() => {
                 window.mountCalled = 0
-                const c = wecco.define("my-component", (data) => wecco.html`<span @update=${() => window.mountCalled++}>${data.message}</span>`)
+                const c = wecco.define("my-component", ({data}) => wecco.html`<span @update=${() => window.mountCalled++}>${data.message}</span>`)
                 const e = c({ message: "hello" })
                 e.mount("#app")
                 e.setData({ message: "world" })
@@ -235,8 +210,7 @@ test.describe("define", () => {
             })
             await sleep()
 
-            const text = await page.$eval("#app div span", e => e.innerText)
-            expect(text).toBe("foo")
+            await expect(page.locator("#app div span")).toHaveText("foo")
         })
 
         test("should invoke @update for a custom element only once per update cycle", async ({ page }) => {
@@ -282,41 +256,41 @@ test.describe("define", () => {
         test("should bind html attribute values to data properties", async ({ page }) => {
             await page.goto(".")
             await page.evaluate(() => {
-                wecco.define("test-component", data => wecco.html`<p>${data.text}</p>`, { observedAttributes: ["text"] })
+                wecco.define("test-component", ({data}) => wecco.html`<p>${data.text}</p>`, { observedAttributes: ["text"] })
                 document.querySelector("#app").innerHTML = "<test-component text='foo bar'></test-component>"
             })
-            const text = await page.$eval("#app p", e => e.innerText)
-            expect(text).toBe("foo bar")
+            
+            await expect(page.locator("#app p")).toHaveText("foo bar")
         })
 
         test("should bind multiple html attribute values when array is given", async ({ page }) => {
             await page.goto(".")
             await page.evaluate(() => {
-                wecco.define("test-component", data => wecco.html`<p>${data.a1}${data.a2}</p>`, { observedAttributes: ["a1", "a2"] })
+                wecco.define("test-component", ({data}) => wecco.html`<p>${data.a1}${data.a2}</p>`, { observedAttributes: ["a1", "a2"] })
                 document.querySelector("#app").innerHTML = "<test-component a1='foo' a2='bar'></test-component>"
             })
-            const text = await page.$eval("#app p", e => e.innerText)
-            expect(text).toBe("foobar")
+            
+            await expect(page.locator("#app p")).toHaveText("foobar")
         })
 
         test("should bind multiple html attribute values when multiple names are given", async ({ page }) => {
             await page.goto(".")
             await page.evaluate(() => {
-                wecco.define("test-component", data => wecco.html`<p>${data.a1}${data.a2}</p>`, { observedAttributes: ["a1", "a2"] })
+                wecco.define("test-component", ({data}) => wecco.html`<p>${data.a1}${data.a2}</p>`, { observedAttributes: ["a1", "a2"] })
                 document.querySelector("#app").innerHTML = "<test-component a1='foo' a2='bar'></test-component>"
             })
-            const text = await page.$eval("#app p", e => e.innerText)
-            expect(text).toBe("foobar")
+            
+            await expect(page.locator("#app p")).toHaveText("foobar")
         })
 
         test("should bind data property changes to html attribute values", async ({ page }) => {
             await page.goto(".")
             await page.evaluate(() => {
-                wecco.define("test-component", (data, context) => {
+                wecco.define("test-component", ({data, requestUpdate}) => {
                     if (data.text !== "changed") {
                         setTimeout(() => {
                             data.text = "changed"
-                            context.requestUpdate()
+                            requestUpdate()
                         }, 1)
                     }
                     return wecco.html`<p>${data.text}</p>`
@@ -324,16 +298,7 @@ test.describe("define", () => {
                 document.querySelector("#app").innerHTML = "<test-component text='foo bar'></test-component>"
             })
 
-            let text = ""
-            while (true) {
-                await sleep(10)
-                text = await page.$eval("#app test-component", e => e.getAttribute("text"))
-                if (text === "changed") {
-                    break
-                }
-            }
-
-            expect(text).toBe("changed")
+            await expect(page.locator("#app test-component")).toHaveAttribute("text", "changed")
         })
     })
 
@@ -341,8 +306,8 @@ test.describe("define", () => {
         test("should render observed property", async ({page}) => {
             await page.goto(".")
             await page.evaluate(() => {
-                wecco.define("test-component", ({label}) => {
-                    return wecco.html`<p>${label}</p>`
+                wecco.define("test-component", ({data}) => {
+                    return wecco.html`<p>${data.label}</p>`
                 }, { observedProperties: ["label"]})
                 
                 window.testComponentInstance = wecco.component("test-component")
@@ -350,15 +315,14 @@ test.describe("define", () => {
                 window.testComponentInstance.mount("#app")
             })
           
-            await sleep(10)  
             await expect(page.locator("#app p")).toHaveText("foo")
         })
 
         test("should re-render observed property on change", async ({page}) => {
             await page.goto(".")
             await page.evaluate(() => {
-                wecco.define("test-component", ({label}) => {
-                    return wecco.html`<p>${label}</p>`
+                wecco.define("test-component", ({data}) => {
+                    return wecco.html`<p>${data.label}</p>`
                 }, { observedProperties: ["label"]})
                 
                 window.testComponentInstance = wecco.component("test-component", {label: "foo"})
@@ -367,17 +331,16 @@ test.describe("define", () => {
                 setTimeout(() => { window.testComponentInstance.label = "bar" }, 2)
             })
           
-            await sleep(10)
             await expect(page.locator("#app p")).toHaveText("bar")
         })
 
         test("should reflect changed data field via observed property", async ({page}) => {
             await page.goto(".")
             await page.evaluate(() => {
-                wecco.define("test-component", (data, ctx) => {
+                wecco.define("test-component", ({data, requestUpdate}) => {
                     setTimeout(() => {
                         data.label = "bar"
-                        ctx.requestUpdate()
+                        requestUpdate()
                     }, 5)
                     return wecco.html`<p>${data.label}</p>`
                 }, { observedProperties: ["label"]})
@@ -386,7 +349,6 @@ test.describe("define", () => {
                 window.testComponentInstance.mount("#app")
             })
           
-            await sleep(10)
             await expect(page.locator("#app p")).toHaveText("bar")
             expect(await page.evaluate(() => window.testComponentInstance.label)).toBe("bar")
         })
@@ -477,12 +439,12 @@ test.describe("define", () => {
                 document.addEventListener("test", e => {
                     window._receivedEvent = e.detail
                 })
-                wecco.define("test-component", (data, context) => {
+                wecco.define("test-component", ({data, emit, requestUpdate}) => {
                     if (!data.send) {
                         setTimeout(() => {
                             data.send = true
-                            context.emit("test", "foobar")
-                            context.requestUpdate()
+                            emit("test", "foobar")
+                            requestUpdate()
                         }, 1)
                     }
                     return "test"
@@ -499,15 +461,15 @@ test.describe("define", () => {
         test("should emit and subscribe for custom events", async ({ page }) => {
             await page.goto(".")
             await page.evaluate(() => {
-                wecco.define("my-button", (data, context) => {
-                    return wecco.html`<button @click=${() => context.emit("click")}>${data.label}</button>`
+                wecco.define("my-button", ({data, emit}) => {
+                    return wecco.html`<button @click+stopPropagation+preventDefault=${() => emit("click")}>${data.label}</button>`
                 }, { observedAttributes: ["label"] })
 
-                wecco.define("count-clicks", (data, context) => {
+                wecco.define("count-clicks", ({data, requestUpdate, addEventListener}) => {
                     data.count = data.count || 0
-                    context.addEventListener("click", () => {
+                    addEventListener("click", () => {
                         data.count++
-                        context.requestUpdate()
+                        requestUpdate()
                     })
 
                     return wecco.html`
@@ -519,20 +481,15 @@ test.describe("define", () => {
                 document.querySelector("#app").innerHTML = "<count-clicks/>"
             })
 
-            await page.evaluate(() => {
-                document.querySelector("button").dispatchEvent(new MouseEvent("click"))
-            })
-
-            await sleep(20)
-            const text = await page.$eval("#app count-clicks p", e => e.innerText)
-            expect(text).toBe("You clicked me 1 times.")
+            await page.locator("#app count-clicks my-button button").click()
+            await expect(page.locator("#app count-clicks p")).toHaveText("You clicked me 1 times.")
         })
 
         test("should emit and subscribe for custom events on same component", async ({ page }) => {
             await page.goto(".")
             await page.evaluate(() => {
-                const b = wecco.define("my-button", (data, context) => {
-                    return wecco.html`<button @click=${() => context.emit("click")}>${data.label}</button>`
+                const b = wecco.define("my-button", ({data, emit}) => {
+                    return wecco.html`<button @click=${() => emit("click")}>${data.label}</button>`
                 }, { observedAttributes: ["label"] })
 
                 document.querySelector("#app").innerHTML = "<my-button label=\"test\"></my-button>"
@@ -544,14 +501,11 @@ test.describe("define", () => {
                 })
             })
 
-            await page.evaluate(() => {
-                document.querySelector("button").dispatchEvent(new MouseEvent("click"))
-            })
-            await sleep(20)
-            const text = await page.$eval("#app", e => e.innerText)
-            expect(text).toBe("clicked")
+            await page.locator("button").click()
+            await expect(page.locator("#app")).toHaveText("clicked")
         })
 
+        // TODO: Improve/Move this test
         test("should handle multiple elements with the same listener correct", async ({ page }) => {
             await page.goto(".")
             await page.evaluate(() => {
@@ -584,8 +538,8 @@ test.describe("define", () => {
             await page.goto(".")
             await page.evaluate(() => {
                 window.onceCallbackInvoked = 0
-                wecco.define("test-component", (data, context) => {
-                    context.once("initializer", () => {
+                wecco.define("test-component", ({data, requestUpdate, once}) => {
+                    once("initializer", () => {
                         window.onceCallbackInvoked++
                     })
 
@@ -594,7 +548,7 @@ test.describe("define", () => {
                     if (data.count < 10) {
                         setTimeout(() => {
                             data.count += 1
-                            context.requestUpdate()
+                            requestUpdate()
                         }, 1)
                     }
 
@@ -603,16 +557,7 @@ test.describe("define", () => {
                 document.querySelector("#app").innerHTML = "<test-component></test-component>"
             })
 
-            let text = ""
-            while (true) {
-                await sleep(10)
-                text = await page.$eval("#app", e => e.innerText)
-                if (text.startsWith("count: 10")) {
-                    break
-                }
-            }
-
-            expect(text).toBe("count: 10; onceCallbackInvoked: 1")
+            await expect(page.locator("#app")).toHaveText("count: 10; onceCallbackInvoked: 1")
         })
     })
 })

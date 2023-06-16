@@ -20,12 +20,12 @@ import { expect, test } from "@playwright/test"
 import { sleep } from "./sleep"
 
 test.describe("app", () => {
-    test("should run counter app", async ({page}) => {
+    test("should run counter app", async ({ page }) => {
         await page.goto(".")
 
         await page.evaluate(() => {
             class Model {
-                constructor(count) { 
+                constructor(count) {
                     this.count = count
                 }
 
@@ -34,28 +34,23 @@ test.describe("app", () => {
                 }
             }
 
-            function update(ctx, model, message) {
+            function update({ model }) {
                 return model.inc()
             }
 
-            function view(ctx, model) {
+            function view({ emit, model }) {
                 return wecco.html`<p>
-                    <button class="btn btn-primary" @click=${() => ctx.emit("inc")}>
+                    <button class="btn btn-primary" @click=${emit.bind(null, "inc")}>
                         You clicked me ${model.count} times
                     </button>
                 </p>`
             }
 
-            wecco.app(() => new Model(0), update, view, "#app")
+            wecco.createApp(() => new Model(0), update, view).mount("#app")
         })
-        
-        await page.evaluate(() => {
-            document.querySelector("button").dispatchEvent(new MouseEvent("click"))
-        })
-        
-        await sleep(100)
-        
-        const text = await page.$eval("#app button", e => e.innerText)
-        await expect(text).toBe("You clicked me 1 times")
+
+        await page.click("button")
+
+        await expect(page.locator("#app button")).toHaveText("You clicked me 1 times")
     })
 })

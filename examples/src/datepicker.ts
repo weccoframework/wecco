@@ -17,7 +17,7 @@ export interface DatePickerData {
     message?: string
 }
 
-export const datePicker = wecco.define("date-picker", (data: DatePickerData, context: wecco.RenderContext) => {
+export const datePicker = wecco.define<DatePickerData>("date-picker", ({data, requestUpdate, emit}) => {
     let date: Date | null = null
 
     if (typeof data.value === "string" && data.value !== "") {
@@ -33,7 +33,7 @@ export const datePicker = wecco.define("date-picker", (data: DatePickerData, con
     if (!data.inEdit) {
         const startEditing = () => {
             data.inEdit = true
-            context.requestUpdate()
+            requestUpdate()
         }
 
         return wecco.html`<a href="#" class="text-sm bg-gray-400 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-full" 
@@ -43,9 +43,9 @@ export const datePicker = wecco.define("date-picker", (data: DatePickerData, con
     const onChange = (e: Event) => {
         data.inEdit = false
         data.value = (e.target as HTMLInputElement).valueAsDate ?? null        
-        context.emit("date-selected", data.value)
-        context.requestUpdate()
+        emit("date-selected", data.value)
+        requestUpdate()
     }
 
     return wecco.html`<input type="date" autofocus @change=${onChange} @blur=${onChange} .valueAsDate+omitempty=${date} style="display: inline-block;">`
-}, "value", "message")
+}, { observedAttributes: ["value", "message"]})

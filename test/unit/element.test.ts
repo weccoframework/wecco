@@ -49,7 +49,7 @@ describe("element.ts", () => {
     describe("define", () => {
         let component: ComponentFactory<ComponentData>
         before(() => {
-            component = define("test-component", (data: ComponentData, notifyUpdate) => {
+            component = define("test-component", ({ data }) => {
                 return `<p>${data.s}: ${data.n}</p>`
             })
         })

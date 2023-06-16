@@ -10,22 +10,23 @@ class Model {
 
 type Message = "inc"
 
-function update(ctx: wecco.AppContext<Message>, model: Model, message: Message): Model {
+function update({model}: wecco.UpdaterContext<Model, Message>): Model {
     return model.inc()
 }
 
-function view (ctx: wecco.AppContext<Message>, model: Model) {
+function view ({ emit, model }: wecco.ViewContext<Model, Message>) {
     return wecco.html`
     <p class="text-sm">${model.explanation}</p>
     <p>
         <button 
             class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-            @click=${() => ctx.emit("inc")}>
+            @click=${() => emit("inc")}>
             You clicked me ${model.count} times
         </button>
     </p>`
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    wecco.app(() => new Model(0, "Click the button to increment the counter."), update, view, "#count-clicks-app")
+    wecco.createApp(() => new Model(0, "Click the button to increment the counter."), update, view)
+        .mount("#count-clicks-app")
 })

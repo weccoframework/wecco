@@ -3,7 +3,6 @@
 ![CI Status][ci-img-url] 
 [![Releases][release-img-url]][release-url]
 [![Vulerabilities][vulnerabilities-img-url]][vulnerabilities-url]
-[![Dependencies][dependencies-img-url]][dependencies-url]
 
 `wecco` is a Web Framework based on web standards such as [Web Components](https://www.webcomponents.org/), 
 [HTML Templates](https://developer.mozilla.org/de/docs/Web/HTML/Element/template) and plain JavaScript that features
@@ -21,9 +20,9 @@ provide valuable hints of function's parameters and return types. Nevertheless `
 Javascript as well.
 
 Besides a couple of development tools (such as TypeScript, mocha, ...) `wecco` uses _no dependencies_ (all 
-dependencies are declared as `devDependencies` in the [`package.json`](./package.json)). This 
-means, that adding `wecco` to your project does not bloat your `node_modules`. The (unminified) UMD module is
-only 28k in size.
+dependencies are declared as `devDependencies` in [`package.json`](./package.json)). This 
+means, that adding `wecco` to your project does not bloat your `node_modules`. The UMD module is only 13k in
+size.
 
 > wecco is stil under heavy development and the API is not considered stable until release 1.0.0.
 
@@ -74,23 +73,27 @@ class Model {
 
 type Message = "inc"
 
-function update(ctx: wecco.AppContext<Message>, model: Model, message: Message): Model {
+function update({model}: wecco.UpdaterContext<Model, Message>): Model {
     return model.inc()
 }
 
-function view (ctx: wecco.AppContext<Message>, model: Model) {
+function view ({ emit, model }: wecco.ViewContext<Model, Message>) {
     return wecco.html`
-    <p>${model.explanation}</p>
+    <p class="text-sm">${model.explanation}</p>
     <p>
-        <button class="btn btn-primary" @click=${() => ctx.emit("inc")}>
+        <button 
+            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+            @click=${() => emit("inc")}>
             You clicked me ${model.count} times
         </button>
     </p>`
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    wecco.app(() => new Model(0, "Click the button to increment the counter."), update, view, "#count-clicks-app")
+    wecco.createApp(() => new Model(0, "Click the button to increment the counter."), update, view)
+        .mount("#count-clicks-app")
 })
+
 ```
 
 `wecco.define` is used to define a custom webcomponent. It returns a factory function that can be used to 
@@ -125,17 +128,19 @@ interface CountClicks {
     count?: number
 }
 
-const CountClicks = wecco.define("count-clicks", (data: CountClicks, context) => {
-    if (typeof(data.count) === "undefined") {
-        data.count = 0
-    }
+const CountClicks = wecco.define<CountClicks>("count-clicks", ({ data, requestUpdate }) => {
+    data.count = data.count ?? 0
 
     return wecco.html`<p>
-        <button class="btn btn-primary" @click=${() => { data.count++; context.requestUpdate(); }}>
+        <button 
+            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" 
+            @click=${() => { data.count++; requestUpdate(); }}>
             You clicked me ${data.count} times
         </button>
     </p>`
-}, "count")
+}, {
+    observedAttributes: ["count"],
+})
 ```
 
 Check out the [examples](./examples) to see these two in action as well as the classical todo app.
@@ -167,5 +172,3 @@ limitations under the License.
 [release-url]: https://github.com/weccoframework/core/releases
 [vulnerabilities-url]: https://snyk.io/test/github/weccoframework/core
 [vulnerabilities-img-url]: https://snyk.io/test/github/weccoframework/core/badge.svg
-[dependencies-url]: https://david-dm.org/weccoframework/core
-[dependencies-img-url]: https://status.david-dm.org/gh/weccoframework/core.svg

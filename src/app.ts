@@ -29,11 +29,31 @@ export const NoModelChange = {}
  */
 export type ModelResult<M> = M | typeof NoModelChange | Promise<M> | Promise<typeof NoModelChange>
 
+export type MessageEmitter<MESSAGE> = (msg: MESSAGE) => void
+
+export interface ViewContext<MODEL, MESSAGE> {
+    emit: MessageEmitter<MESSAGE>
+    get model(): MODEL
+}
+
+/**
+ * A function that takes a model and an app context and produces a ViewResult.
+ * The type is generic on both the model's and message's type.
+ * @param ctx the app context to emit messages
+ * @param model the model to render a view for
+ * @returns the result of the rendering process
+ */
+export type View<MODEL, MESSAGE> = (ctx: ViewContext<MODEL, MESSAGE>) => ElementUpdate
+
 /**
  * A function that can initialize a model.
  * This type is generic on the produced model's type.
  */
 export type ModelInitializer<MODEL> = () => MODEL | Promise<MODEL>
+
+export interface UpdaterContext<MODEL, MESSAGE> extends ViewContext<MODEL, MESSAGE> {
+    get message(): MESSAGE
+}
 
 /**
  * A function that updates a model based on messages passed to it.
@@ -44,24 +64,12 @@ export type ModelInitializer<MODEL> = () => MODEL | Promise<MODEL>
  * @param message the message that caused this invocation of the updater
  * @returns the model result to render
  */
-export type Updater<MODEL, MESSAGE> = (ctx: AppContext<MESSAGE>, model: MODEL, message: MESSAGE) => ModelResult<MODEL>
+export type Updater<MODEL, MESSAGE> = (ctx: UpdaterContext<MODEL, MESSAGE>) => ModelResult<MODEL>
 
-/**
- * Interface for a context object which can be used to control an app by sending messages.
- * The interface is generic on the type of message.
- */
-export interface AppContext<M> {
-    emit(message: M): void
+export interface App<MODEL, MESSAGE> {
+    emit(msg: MESSAGE): App<MODEL, MESSAGE>
+    mount(mountPoint: ElementSelector): App<MODEL, MESSAGE>
 }
-
-/**
- * A function that takes a model and an app context and produces a ViewResult.
- * The type is generic on both the model's and message's type.
- * @param ctx the app context to emit messages
- * @param model the model to render a view for
- * @returns the result of the rendering process
- */
-export type View<MODEL, MESSAGE> = (ctx: AppContext<MESSAGE>, model: MODEL) => ElementUpdate
 
 /**
  * Creates a new app using the given components.
@@ -69,33 +77,48 @@ export type View<MODEL, MESSAGE> = (ctx: AppContext<MESSAGE>, model: MODEL) => E
  * @param updater applies update messages to the model - either synchronously or asynchronously
  * @param view renders the model - always synchronously
  * @param mountPoint the mount point to control using this app
- * @returns an AppContext that can be used to control the app by emitting messages
+ * @returns an App that can be used to control the app by emitting messages
  */
-export function app<MODEL, MESSAGE>(modelInitializer: ModelInitializer<MODEL>, updater: Updater<MODEL, MESSAGE>, view: View<MODEL, MESSAGE>, mountPoint: ElementSelector): AppContext<MESSAGE> {
-    return new AppContextImpl(modelInitializer, updater, view, resolve(mountPoint))
+export function createApp<MODEL, MESSAGE>(modelInitializer: ModelInitializer<MODEL>, updater: Updater<MODEL, MESSAGE>, view: View<MODEL, MESSAGE>): App<MODEL, MESSAGE> {
+    return new AppImpl(modelInitializer, updater, view)
 }
 
-class AppContextImpl<MODEL, MESSAGE> implements AppContext<MESSAGE> {
-    private model: MODEL
+class AppImpl<MODEL, MESSAGE> implements App<MODEL, MESSAGE> {
+    private _model: MODEL | undefined
+    private mountPoint: Element | undefined
 
-    constructor(modelInitializer: ModelInitializer<MODEL>, private readonly updater: Updater<MODEL, MESSAGE>, private readonly view: View<MODEL, MESSAGE>, private readonly mountPoint: Element) {
+    constructor(modelInitializer: ModelInitializer<MODEL>, private readonly updater: Updater<MODEL, MESSAGE>, private readonly view: View<MODEL, MESSAGE>) {
         const m = modelInitializer()
         if (m instanceof Promise) {
             m
                 .then(model => {
-                    this.model = model
+                    this._model = model
                     this.performUpdate()
                 })
                 .catch(console.error)
             return
         }
 
-        this.model = m
+        this._model = m
+    }
+
+    mount(mountPoint: ElementSelector) {
+        this.mountPoint = resolve(mountPoint)
         this.performUpdate()
+        return this
+    }
+
+    get model(): MODEL {
+        return this._model
     }
 
     emit(message: MESSAGE) {
-        const result = this.updater(this, this.model, message)
+        const result = this.updater({
+            emit: this.emit.bind(this),
+            model: this._model,
+            message
+        })
+
         if (isPromise<MODEL>(result)) {
             result
                 .then(m => this.applyModel(m))
@@ -104,6 +127,7 @@ class AppContextImpl<MODEL, MESSAGE> implements AppContext<MESSAGE> {
         }
 
         this.applyModel(result)
+        return this
     }
 
     private applyModel(model: MODEL | typeof NoModelChange) {
@@ -111,12 +135,21 @@ class AppContextImpl<MODEL, MESSAGE> implements AppContext<MESSAGE> {
             return
         }
 
-        this.model = model as MODEL
+        this._model = model as MODEL
         this.performUpdate()
     }
 
     private performUpdate() {
-        updateElement(this.mountPoint, this.view(this, this.model))
+        if (typeof(this._model) === "undefined") {
+            return
+        }
+        if (typeof(this.mountPoint) === "undefined") {
+            return
+        }
+        updateElement(this.mountPoint, this.view({
+            emit: this.emit.bind(this),
+            model: this._model,
+        }))
     }
 }
 

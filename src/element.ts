@@ -33,22 +33,27 @@ export type OnceCallback = () => void
  * `RenderContext` specifies the type for context objects that allow an element to interact
  * with it's surrounding context.
  */
-export interface RenderContext {
+export interface RenderContext<T> {
+    /**
+     * Getter to obtain the data used to render the element.
+     */
+    get data(): T
+
     /**
      * `requestUpdate` notifies the component to update it's DOM representation (normally due do a change
      * of a a `data` field).
      */
-    requestUpdate(): RenderContext
+    requestUpdate: () => void
 
     /**
     * `emit` emits a `CustomEvent` that bubbles up the DOM element hierarchy
     */
-    emit(event: string, payload?: any): RenderContext
+    emit: (event: string, payload?: any) => void
 
     /**
      * `addEventListener` subscribes for `CustomEvents` emitted via `emit`.
      */
-    addEventListener(event: string, listener: (payload?: any) => void): RenderContext
+    addEventListener: (event: string, listener: (payload?: any) => void) => void
 
     /**
      * `once` provides a way to execute a given callback once and just once no matter how
@@ -56,13 +61,14 @@ export interface RenderContext {
      * @param id a unique id used to identify the callback
      * @param callback the callback to execute once
      */
-    once(id: string, callback: OnceCallback): RenderContext
+    once: (id: string, callback: OnceCallback) => void
 }
 
 /**
- * `RenderCallback` defins the type for functions that are passed to `define` in order to produce an element's content
+ * `RenderCallback` defins the type for functions that are passed to `define` in order to produce an element's
+ * content.
  */
-export type RenderCallback<T> = (data: T, context: RenderContext) => ElementUpdate
+export type RenderCallback<T> = (context: RenderContext<T>) => ElementUpdate
 
 /**
  * Type definition for a factory function that gets returned from `define` as a convenience function
@@ -91,7 +97,7 @@ export abstract class WeccoElement<T> extends HTMLElement {
     private _connected = false
 
     /** The render context instance to use */
-    private _renderContext: RenderContext = new WeccoElementRenderContext(this)
+    private readonly _renderContext = new WeccoElementRenderContext<T>(this)
 
     /** Flag that marks whether an update has been requested */
     private _updateRequested = false
@@ -225,7 +231,8 @@ export abstract class WeccoElement<T> extends HTMLElement {
     }
 
     private updateDom() {
-        const elementUpdate = this.renderCallback(this._data || ({} as T), this._renderContext)
+        this._renderContext.data = this._data
+        const elementUpdate = this.renderCallback(this._renderContext)
         this._updateRequested = false
 
         updateElement(this, elementUpdate)
@@ -233,7 +240,7 @@ export abstract class WeccoElement<T> extends HTMLElement {
     }
 }
 
-function stringifyAttributeValue (v: any): string {
+function stringifyAttributeValue(v: any): string {
     if (!v) {
         return ""
     }
@@ -248,25 +255,27 @@ function stringifyAttributeValue (v: any): string {
 /**
  * Implementation of `RenderContext` for a `WeccoElement`
  */
-class WeccoElementRenderContext<T> implements RenderContext {
+class WeccoElementRenderContext<T> implements RenderContext<T> {
+    public data: T | undefined
+
     constructor(private component: WeccoElement<T>) { }
 
-    requestUpdate(): RenderContext {
+    requestUpdate = () => {
         this.component.requestUpdate()
         return this
     }
 
-    emit(event: string, payload?: any): RenderContext {
+    emit = (event: string, payload?: any) => {
         this.component.emit(event, payload)
         return this
     }
 
-    addEventListener(event: string, listener: (payload?: any) => void): RenderContext {
+    addEventListener = (event: string, listener: (payload?: any) => void) => {
         this.component.addEventListener(event, listener)
         return this
     }
 
-    once(id: string, callback: OnceCallback): RenderContext {
+    once = (id: string, callback: OnceCallback) => {
         this.component.registerOnceCallback(id, callback)
         return this
     }
@@ -297,7 +306,7 @@ export function define<T>(name: string, renderCallback: RenderCallback<T>, optio
 
     window.customElements.define(name, class extends WeccoElement<T> {
 
-        constructor () {
+        constructor() {
             super()
 
             options?.observedProperties?.forEach(p => {
@@ -308,7 +317,7 @@ export function define<T>(name: string, renderCallback: RenderCallback<T>, optio
                         return this._data[p]
                     },
                     set(newValue: any) {
-                        this.setData({[p]: newValue})
+                        this.setData({ [p]: newValue })
                     }
                 })
             })
