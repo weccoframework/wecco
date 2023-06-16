@@ -1,14 +1,14 @@
-# wecco examples
+# `@weccoframework/examples`
 
-This directory contains some examples showing how to build components and apps 
+This package contains some examples showing how to build components and apps 
 using `@weccoframework/core`.
 
-The example uses TypeScript in combination with vite.js to power a simple app.
+The examples use TypeScript in combination with vite.js.
 
-In order to run the example, make sure you have run
+In order to run the example, start the vite.js dev server with
 
 ```shell
-npm run build
+npm start
 ```
 
 This directpry contains three examples: a simple button that counts the number 
