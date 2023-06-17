@@ -4,5 +4,12 @@
     "workspaces": [
         "./packages/core",
         "./packages/examples"
-    ]
+    ],
+    "license": "Apache-2.0",
+    "repository": {
+        "type": "git",
+        "url": "git://github.com/weccoframework/wecco.git"
+    },
+    "homepage": "https://weccoframework.github.io"
+
 }
