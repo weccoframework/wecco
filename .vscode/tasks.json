@@ -6,7 +6,7 @@
         {
             "label": "Run unit tests",
             "type": "shell",
-            "command": "npm test",
+            "command": "npm test --workspaces --if-present",
             "group": "test",
             "presentation": {
                 "reveal": "always",
@@ -16,7 +16,7 @@
         {
             "label": "Run acceptance tests",
             "type": "shell",
-            "command": "npm run acceptance-test",
+            "command": "npm run acceptance-test --workspaces --if-present",
             "group": "test",
             "presentation": {
                 "reveal": "always",
