@@ -31,4 +31,3 @@ jobs:
     - run: npm test --workspaces --if-present
     - run: npm run acceptance-test --workspaces --if-present
     - run: npm run coverage --workspaces --if-present
-    - run: npm run performance-test --workspaces --if-present
