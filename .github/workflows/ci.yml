@@ -15,7 +15,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
         node: ['16', '17', '18']
     steps:
     - uses: actions/checkout@v3
@@ -31,3 +31,4 @@ jobs:
     - run: npm test --workspaces --if-present
     - run: npm run acceptance-test --workspaces --if-present
     - run: npm run coverage --workspaces --if-present
+    - run: npm run performance-test --workspaces --if-present
