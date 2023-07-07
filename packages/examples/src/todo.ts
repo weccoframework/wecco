@@ -5,7 +5,7 @@ import "./datepicker"
 // -- Models
 
 class TodoList {
-    constructor (public readonly title: String | null, public readonly items: ReadonlyArray<TodoItem>) {}
+    constructor(public readonly title: string | null, public readonly items: ReadonlyArray<TodoItem>) { }
 
     addItem(item: TodoItem): TodoList {
         const items = this.items.slice()
@@ -27,14 +27,15 @@ class TodoList {
     }
 }
 
-type FieldUpdate = [keyof TodoItem, any]
+type FieldUpdate = [keyof TodoItem, unknown]
 
 class TodoItem {
     constructor(public summary: string, public complete: boolean = false, public dueDate: Date | null = null, public editing: boolean = false) { }
 
     applyUpdates(...updates: Array<FieldUpdate>): TodoItem {
         const item = new TodoItem(this.summary, this.complete, this.dueDate, this.editing)
-        updates.forEach(u => (item as any)[u[0]] = u[1])        
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        updates.forEach(u => (item as any)[u[0]] = u[1])
         return item
     }
 }
@@ -49,7 +50,7 @@ interface Update {
     command: "update",
     index: number,
     field: keyof TodoItem,
-    value: any
+    value: unknown
 }
 
 interface Delete {
@@ -60,6 +61,12 @@ interface Delete {
 type Message = Add | Update | Delete
 
 // -- Persistence
+
+interface PersistentTodoItem {
+    summary: string
+    complete: boolean
+    dueDate: string | null
+}
 
 class Store {
     constructor(private key: string = "todos") { }
@@ -73,7 +80,7 @@ class Store {
 
         try {
             const data = JSON.parse(jsonData)
-            return new TodoList(data.title, data.items.map((i: any) => new TodoItem(i.summary, i.complete, i.dueDate ? new Date(i.dueDate) : null)))
+            return new TodoList(data.title, data.items.map((i: PersistentTodoItem) => new TodoItem(i.summary, i.complete, i.dueDate ? new Date(i.dueDate) : null)))
         } catch (e) {
             window.localStorage.setItem(this.key, "")
             return new TodoList(null, [])
@@ -83,13 +90,15 @@ class Store {
     save(list: TodoList) {
         const data = {
             title: list.title,
-            items: list.items.map(i => { return {
-                summary: i.summary,
-                complete: i.complete,
-                dueDate: i.dueDate?.toISOString() ?? null,
-            }}),
+            items: list.items.map(i => {
+                return {
+                    summary: i.summary,
+                    complete: i.complete,
+                    dueDate: i.dueDate?.toISOString() ?? null,
+                }
+            }),
         }
-                
+
         const jsonData = JSON.stringify(data)
         window.localStorage.setItem(this.key, jsonData)
     }
@@ -97,7 +106,7 @@ class Store {
 
 // -- View
 
-function view({emit, model}: wecco.ViewContext<TodoList, Message>): wecco.ElementUpdate {
+function view({ emit, model }: wecco.ViewContext<TodoList, Message>): wecco.ElementUpdate {
     return wecco.html`
         <div class="flex flex-row justify-between mb-2">
             <h2 class="font-bold text-lg">${model.title || "Todos"}</h2>
@@ -115,13 +124,13 @@ function view({emit, model}: wecco.ViewContext<TodoList, Message>): wecco.Elemen
     `
 }
 
-function itemView(emit: wecco.MessageEmitter<Message>, model: TodoItem, idx: number, ): wecco.ElementUpdate {
+function itemView(emit: wecco.MessageEmitter<Message>, model: TodoItem, idx: number,): wecco.ElementUpdate {
     const onChange = (e: InputEvent) => emit({
-            command: "update", 
-            index: idx,
-            field: "summary",
-            value: (e.target as HTMLInputElement).value,
-        })
+        command: "update",
+        index: idx,
+        field: "summary",
+        value: (e.target as HTMLInputElement).value,
+    })
 
     const markAsComplete = () => emit({
         command: "update",
@@ -153,12 +162,7 @@ function itemView(emit: wecco.MessageEmitter<Message>, model: TodoItem, idx: num
             <div class="gap">
                 <a @click=${markAsComplete} class="text-sm bg-gray-400 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-full"><i class="material-icons">check</i></a>
                 
-                <date-picker value=${model.dueDate?.toISOString()} @date-selected=${(e: CustomEvent) => { emit({
-                    command: "update",
-                    index: idx,
-                    field: "dueDate",
-                    value: e.detail,
-                })}}><span class="material-icons">calendar</span></date-picker>
+                <date-picker value=${model.dueDate?.toISOString()} @date-selected=${(e: CustomEvent) => emit({ command: "update", index: idx, field: "dueDate", value: e.detail })}><span class="material-icons">calendar</span></date-picker>
                 <a @click=${remove} class="text-sm bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-full"><i class="material-icons">delete</i></a>
             </div>
         `
@@ -171,18 +175,18 @@ function itemView(emit: wecco.MessageEmitter<Message>, model: TodoItem, idx: num
 
 const store = new Store("@weccoframework/examples/todos")
 
-function update({ model, message}: wecco.UpdaterContext<TodoList, Message>): TodoList {
+function update({ model, message }: wecco.UpdaterContext<TodoList, Message>): TodoList {
     switch (message.command) {
         case "add":
             model = model.addItem(new TodoItem("", false, null, true))
             break
-        
+
         case "update":
             model = model.updateItem(message.index, [message.field, message.value], ["editing", false])
             break
-        
+
         case "delete":
-            model = model.deleteItem(message.index)    
+            model = model.deleteItem(message.index)
     }
 
     store.save(model)

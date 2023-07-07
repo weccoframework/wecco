@@ -45,7 +45,7 @@ export class HtmlTemplate implements ElementUpdater {
      * @param strings the strings as passed to the `html` string tag
      * @param data the data arguments as passed to the `html` string tag
      */
-    constructor(private readonly strings: TemplateStringsArray, public data: ReadonlyArray<any>) { }
+    constructor(private readonly strings: TemplateStringsArray, public data: ReadonlyArray<unknown>) { }
 
     /**
      * Generates a string containing the HTML markup as described by the strings array
@@ -118,9 +118,9 @@ export class HtmlTemplate implements ElementUpdater {
     }
 }
 
-const PlaceholderAttributeRegex = /([.?@]?[a-z0-9-_@]+)\s*=\s*$/i;
-const PlaceholderSingleQuotedAttributeRegex = /([.?@]?[a-z0-9-_@]+)\s*=\s*'[^']*$/i;
-const PlaceholderDoubleQuotedAttributeRegex = /([.?@]?[a-z0-9-_@]+)\s*=\s*"[^"]*$/i;
+const PlaceholderAttributeRegex = /([.?@]?[a-z0-9-_@]+)\s*=\s*$/i
+const PlaceholderSingleQuotedAttributeRegex = /([.?@]?[a-z0-9-_@]+)\s*=\s*'[^']*$/i
+const PlaceholderDoubleQuotedAttributeRegex = /([.?@]?[a-z0-9-_@]+)\s*=\s*"[^"]*$/i
 
 /**
  * Generates a HTML markup string from the given static string parts.
@@ -159,7 +159,7 @@ function generateHtml(strings: TemplateStringsArray): [string, Map<string, strin
  * into an element but the rendered content is modified by some external DOM
  * operations when applying the insert.
  */
-const DomInconsistencyError = `DOM inconsistency error`
+const DomInconsistencyError = "DOM inconsistency error"
 
 /**
  * A `Binding` defines how to apply a placeholder's value to the DOM.
@@ -185,7 +185,7 @@ interface Binding {
      * 
      * @param data all placeholder values
      */
-    applyData(data: ReadonlyArray<any>): void
+    applyData(data: ReadonlyArray<unknown>): void
 }
 
 /**
@@ -233,7 +233,7 @@ abstract class BindingBase implements Binding {
         this.node = node
     }
 
-    abstract applyData(data: ReadonlyArray<any>): void
+    abstract applyData(data: ReadonlyArray<unknown>): void
 }
 
 /**
@@ -242,7 +242,7 @@ abstract class BindingBase implements Binding {
  * only when data changes.
  */
 abstract class SingleDataIndexBindingBase extends BindingBase {
-    protected boundData: any
+    protected boundData: unknown
 
     constructor(nodeIndex: number, protected readonly dataIndex: number) {
         super(nodeIndex)
@@ -254,7 +254,7 @@ abstract class SingleDataIndexBindingBase extends BindingBase {
      * data updates.
      * @param data the data array
      */
-    applyData(data: Array<any>): void {
+    applyData(data: Array<unknown>): void {
         const dataItem = data[this.dataIndex]
 
         if (this.boundData === dataItem) {
@@ -270,7 +270,7 @@ abstract class SingleDataIndexBindingBase extends BindingBase {
      * Called by `applyData` when a change in data is detected.
      * @param dataItem the single element from the data array selected by data index
      */
-    protected abstract applyChangedData(dataItem: any): void
+    protected abstract applyChangedData(dataItem: unknown): void
 }
 
 /**
@@ -281,7 +281,7 @@ abstract class SingleDataIndexBindingBase extends BindingBase {
 class NodeBinding extends BindingBase {
     private startMarker: Node | undefined
     private endMarker: Node | undefined
-    private boundData: any
+    private boundData: unknown
 
     constructor(nodeIndex: number, protected readonly dataIndex: number) {
         super(nodeIndex)
@@ -300,14 +300,14 @@ class NodeBinding extends BindingBase {
         this.startMarker = node.parentNode.insertBefore(createMarker(), node)
     }
 
-    applyData(data: ReadonlyArray<any>): void {
+    applyData(data: ReadonlyArray<unknown>): void {
         const dataItem = data[this.dataIndex]
 
         if (this.boundData === dataItem) {
             return
         }
 
-        if (typeof(dataItem) === "undefined" || dataItem === null) {
+        if (typeof (dataItem) === "undefined" || dataItem === null) {
             // undefined/null are special and should be rendered as no content.
             this.applyText("")
         } else if (typeof dataItem === "string") {
@@ -326,7 +326,7 @@ class NodeBinding extends BindingBase {
         }
     }
 
-    private applyIterable(dataItem: Iterable<any>) {
+    private applyIterable(dataItem: Iterable<unknown>) {
         const dataArray = Array.from(dataItem)
 
         if (Array.isArray(this.boundData)) {
@@ -363,12 +363,12 @@ class NodeBinding extends BindingBase {
         (this.boundData as Array<Binding>).forEach(b => b.applyData(dataArray))
     }
 
-    private createBindingsFromIterable(dataArray: Array<any>, startIndex = 0) {
+    private createBindingsFromIterable(dataArray: Array<unknown>, startIndex = 0) {
         for (let idx = startIndex; idx < dataArray.length; ++idx) {
             const endMarker = this.endMarker.parentNode.insertBefore(createMarker(), this.endMarker)
             const binding = new NodeBinding(this.nodeIndex, idx)
-            binding.bind(endMarker, this.nodeIndex)
-            this.boundData.push(binding)
+            binding.bind(endMarker, this.nodeIndex);
+            (this.boundData as Array<unknown>).push(binding)
         }
     }
 
@@ -437,7 +437,10 @@ class AttributeBinding extends BindingBase {
     private element: Element
     private boundAttributeValue: string | undefined
 
-    constructor(nodeIndex: number, private readonly attributeName: string, private readonly valueInstructions: Array<string | number>, private readonly directives: AttributeBindingDirectives) {
+    constructor(nodeIndex: number,
+        private readonly attributeName: string,
+        private readonly valueInstructions: Array<string | number>,
+        private readonly directives: AttributeBindingDirectives) {
         super(nodeIndex)
     }
 
@@ -450,7 +453,7 @@ class AttributeBinding extends BindingBase {
         super.bindNode(node)
     }
 
-    applyData(data: ReadonlyArray<any>): void {
+    applyData(data: ReadonlyArray<unknown>): void {
         let gotEmptyValue = false
         const attributeValue = this.valueInstructions.map(vi => {
             if (typeof vi === "string") {
@@ -461,8 +464,8 @@ class AttributeBinding extends BindingBase {
 
             // Otherwise it must be a number and refers to a
             // data item.
-            let d = data[vi]
-            
+            const d = data[vi]
+
             if (typeof d === "undefined" || d === null) {
                 // If the data item is undefined or null we
                 // set the empty value flag. 
@@ -517,8 +520,8 @@ class BooleanAttributeBinding extends SingleDataIndexBindingBase {
         super.bindNode(node)
     }
 
-    protected applyChangedData(dataItem: any): void {
-        if (!!dataItem) {
+    protected applyChangedData(dataItem: unknown): void {
+        if (dataItem) {
             this.element.setAttribute(this.attributeName, this.attributeName)
         } else {
             this.element.removeAttribute(this.attributeName)
@@ -545,7 +548,9 @@ class EventListenerAttributeBinding extends SingleDataIndexBindingBase {
     private element: Element
     private boundListener: EventListenerOrEventListenerObject
 
-    constructor(nodeIndex: number, private readonly eventName: string, dataIndex: number, private readonly directives: EventListenerAttributeDirectives) {
+    constructor(nodeIndex: number, 
+        private readonly eventName: string, dataIndex: number, 
+        private readonly directives: EventListenerAttributeDirectives) {
         super(nodeIndex, dataIndex)
     }
 
@@ -558,12 +563,12 @@ class EventListenerAttributeBinding extends SingleDataIndexBindingBase {
         super.bindNode(node)
     }
 
-    protected applyChangedData(dataItem: any): void {
+    protected applyChangedData(dataItem: unknown): void {
         if (this.boundListener) {
             this.element.removeEventListener(this.eventName, this.boundListener)
         }
 
-        this.boundListener = this.createListener(dataItem)
+        this.boundListener = this.createListener(dataItem as EventListenerOrEventListenerObject)
 
         this.element.addEventListener(this.eventName, this.boundListener, this.directives)
     }
@@ -615,7 +620,8 @@ class PropertyBinding extends SingleDataIndexBindingBase {
         super.bindNode(node)
     }
 
-    protected applyChangedData(dataItem: any): void {
+    protected applyChangedData(dataItem: unknown): void {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (this.element as any)[this.propertyName] = dataItem
     }
 }
@@ -625,7 +631,7 @@ class PropertyBinding extends SingleDataIndexBindingBase {
  * @param bindings the bindings
  * @param data the data
  */
-export function applyData(bindings: ReadonlyArray<Binding>, data: ReadonlyArray<any>): void {
+export function applyData(bindings: ReadonlyArray<Binding>, data: ReadonlyArray<unknown>): void {
     bindings.forEach(b => b.applyData(data))
 }
 
@@ -640,7 +646,7 @@ export function bindBindings(bindings: ReadonlyArray<Binding>, root: Node) {
     let nodeIndex = -1
     let node: Node
 
-    while (node = treeWalker.nextNode()) {
+    while ((node = treeWalker.nextNode()) !== null) {
         nodeIndex++
         bindings.forEach(b => b.bind(node, nodeIndex))
     }
@@ -660,7 +666,7 @@ export function determineBindings(root: Node, template: HtmlTemplate): Array<Bin
     let nodeIndex = -1
     let node: Node
 
-    while (node = treeWalker.nextNode()) {
+    while ((node = treeWalker.nextNode()) !== null) {
         // Walk the whole DOM subtree and detect nodes with a binding marker on it.
         // Use the nodeIndex as a pointer to this node
         nodeIndex++
@@ -673,7 +679,7 @@ export function determineBindings(root: Node, template: HtmlTemplate): Array<Bin
 
         } else if (node.nodeType === Node.ELEMENT_NODE) {
             const element = node as Element
-            for (let name of element.getAttributeNames()) {
+            for (const name of element.getAttributeNames()) {
                 const value = element.getAttribute(name)
                 const parts = splitAtPlaceholders(value)
 
@@ -796,7 +802,7 @@ export function determineBindings(root: Node, template: HtmlTemplate): Array<Bin
                         default:
                             console.warn(`unrecognized attribute binding directive: "${optName}"`)
                     }
-                })                
+                })
 
                 // Finally, create the binding and append it to the list of bindings.
                 bindings.push(new AttributeBinding(nodeIndex, attributeName, valueInstructions, directives))
@@ -824,5 +830,6 @@ function createMarker(): Node {
  */
 function isIterable(value: unknown): value is Iterable<unknown> {
     return Array.isArray(value) ||
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         !!(value && (value as any)[Symbol.iterator])
 }

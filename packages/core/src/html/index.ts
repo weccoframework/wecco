@@ -30,6 +30,6 @@ export { HtmlTemplate } from "./template"
  * @param strings the string parts of the template
  * @param args the arguments of the template
  */
-export function html(strings: TemplateStringsArray, ...args: any): ElementUpdater {
+export function html(strings: TemplateStringsArray, ...args: Array<unknown>): ElementUpdater {
     return new HtmlTemplate(strings, args)
 }

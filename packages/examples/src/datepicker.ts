@@ -17,7 +17,7 @@ export interface DatePickerData {
     message?: string
 }
 
-export const datePicker = wecco.define<DatePickerData>("date-picker", ({data, requestUpdate, emit}) => {
+export const datePicker = wecco.define<DatePickerData>("date-picker", ({ data, requestUpdate, emit }) => {
     let date: Date | null = null
 
     if (typeof data.value === "string" && data.value !== "") {
@@ -42,10 +42,10 @@ export const datePicker = wecco.define<DatePickerData>("date-picker", ({data, re
 
     const onChange = (e: Event) => {
         data.inEdit = false
-        data.value = (e.target as HTMLInputElement).valueAsDate ?? null        
+        data.value = (e.target as HTMLInputElement).valueAsDate ?? null
         emit("date-selected", data.value)
         requestUpdate()
     }
 
     return wecco.html`<input type="date" autofocus @change=${onChange} @blur=${onChange} .valueAsDate+omitempty=${date} style="display: inline-block;">`
-}, { observedAttributes: ["value", "message"]})
+}, { observedAttributes: ["value", "message"] })
