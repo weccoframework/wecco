@@ -1,5 +1,17 @@
 # Changelog
 
+# Version 0.25.0
+
+**Breaking Change**: This version contains an API change that breaks with prior
+versions.
+
+* Callback functions (render callbacks, app handlers, ...) receive a single _Context_ parameter that can
+  be consumed directly but is intended to be consumed using parameter destructuring. This introduces an
+  API breaking change.
+* Upgraded almost all build dependencies (no impact on production code)
+* Improved code packaging process
+* Moved to new mono-repo
+
 # Version 0.24.0
 
 * `updateElement` emits custom events `updatestart` and `updateend` to notify listeners when an update is
