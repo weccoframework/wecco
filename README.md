@@ -4,11 +4,11 @@
 [![Releases][release-img-url]][release-url]
 [![Vulerabilities][vulnerabilities-img-url]][vulnerabilities-url]
 
-[ci-img-url]: https://github.com/weccoframework/core/workflows/CI/badge.svg
-[release-img-url]: https://img.shields.io/github/v/release/weccoframework/core.svg
-[release-url]: https://github.com/weccoframework/core/releases
-[vulnerabilities-url]: https://snyk.io/test/github/weccoframework/core
-[vulnerabilities-img-url]: https://snyk.io/test/github/weccoframework/core/badge.svg
+[ci-img-url]: https://github.com/weccoframework/wecco/workflows/CI/badge.svg
+[release-img-url]: https://img.shields.io/github/v/release/weccoframework/wecco.svg
+[release-url]: https://github.com/weccoframework/wecco/releases
+[vulnerabilities-url]: https://snyk.io/test/github/weccoframework/wecco
+[vulnerabilities-img-url]: https://snyk.io/test/github/weccoframework/wecco/badge.svg
 
 `wecco` is a framework for building web applications based on web standards such as 
 [Web Components](https://www.webcomponents.org/), 
