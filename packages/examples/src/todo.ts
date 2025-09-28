@@ -81,7 +81,7 @@ class Store {
         try {
             const data = JSON.parse(jsonData)
             return new TodoList(data.title, data.items.map((i: PersistentTodoItem) => new TodoItem(i.summary, i.complete, i.dueDate ? new Date(i.dueDate) : null)))
-        } catch (e) {
+        } catch {
             window.localStorage.setItem(this.key, "")
             return new TodoList(null, [])
         }
