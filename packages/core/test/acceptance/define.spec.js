@@ -250,6 +250,37 @@ test.describe("define", () => {
             const count = await page.evaluate(() => window.mountCounter)
             expect(count).toBe(1)
         })
+
+        test("should render double-nested html tags from custom element", async ({page}) => {
+            await page.goto(".")
+            await page.evaluate(() => {
+                const expandToAdd = wecco.define("test-expand-to-add", ({data, requestUpdate}) => {
+                    const toggleState = () => {
+                        data.isExpanded = !data.isExpanded
+                        requestUpdate()
+                    }
+
+                    if (!data.isExpanded) {
+                        return wecco.html`<a href="#" @click+preventDefault=${toggleState}>${data.collapsed}</a>`
+                    }
+
+                    return wecco.html`${data.collapsed}<div class="expand-overlay">${data.expanded}</div>`
+                })
+
+                const test = "test"
+
+                wecco.updateElement(document.querySelector("#app"), wecco.html`<div>${expandToAdd({
+                    collapsed: wecco.html`<div class="foo ${test}">${test}</div>`,
+                    expanded: wecco.html`<div class="bar">expanded</div>`,
+                })}</div>`)
+            })
+            await sleep()
+
+            await page.locator("#app div a").click()
+
+            const innerHTML = await page.locator("#app").innerHTML()            
+            expect(innerHTML).toBe("<div><!----><test-expand-to-add><!----><div class=\"foo test\"><!---->test<!----></div><!----><div class=\"expand-overlay\"><!----><div class=\"bar\">expanded</div><!----></div></test-expand-to-add><!----></div>")
+        })
     })
 
     test.describe("attributes", () => {
