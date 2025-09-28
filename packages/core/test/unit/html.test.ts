@@ -459,6 +459,21 @@ describe("html.ts", async () => {
                 updateElement(document.body, tpl(false))
                 expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello</p> ")
             })
+
+            it("should render nested html elements with style class placeholder twice", () => {
+                const target = document.createElement("div")
+                document.body.appendChild(target)
+
+                const test = "test"
+
+                const first = html`<div class=${test}>${test}</div>`
+
+                updateElement(target, html`${first}`)
+                expect(removeMarkerComments(target.innerHTML)).toBe("<div class=\"test\">test</div>")
+                
+                updateElement(target, html`${first}`) 
+                expect(removeMarkerComments(target.innerHTML)).toBe("<div class=\"test\">test</div>")
+            })
         })
     })
 })

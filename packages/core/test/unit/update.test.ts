@@ -17,9 +17,8 @@
  */
 
 import { expect } from "iko"
-import { resolve, removeAllChildren } from "../../src/dom"
-import { updateElement } from "../../src/update"
 import { html } from "../../src/html"
+import { updateElement } from "../../src/update"
 
 describe("update.ts", () => {
     afterEach(() => {
@@ -114,6 +113,16 @@ describe("update.ts", () => {
 
             updateElement(el, ["keep me", "and me"])
             expect(el.innerHTML).toBe("keep meand me")
+        })
+
+        it("twice with extended content 2nd time", () => {
+            const target = document.createElement("div")
+
+            updateElement(target, html`<div>1st</div>`)
+            expect(target.innerHTML).toBe("<div>1st</div>")
+
+            updateElement(target, html`<div>1st</div><div>2nd</div>`)
+            expect(target.innerHTML).toBe("<div>1st</div><div>2nd</div>")
         })
     })
 })

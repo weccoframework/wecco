@@ -24,7 +24,11 @@ import { extractPlaceholderId, generatePlaceholder, isPlaceholder, splitAtPlaceh
  * A cache for re-using instances of `HtmlTemplate` to update only
  * changed parts.
  */
-const elementTemplateMap = new WeakMap<UpdateTarget, HtmlTemplate>()
+class ElementTemplateCacheEntry {
+    constructor (readonly template: HtmlTemplate, readonly bindings: Array<Binding>) {}
+}
+
+const elementTemplateMap = new WeakMap<UpdateTarget, ElementTemplateCacheEntry>()
 
 /**
  * An `ElementUpdater` that is created by the `html` string tag
@@ -37,7 +41,7 @@ export class HtmlTemplate implements ElementUpdater {
     private _templateString: string | undefined
     private _attributeMappings: Map<string, string>
     private _templateElement: HTMLTemplateElement | undefined
-    private _bindings: Array<Binding> | undefined
+    private _bindingDescriptors: Array<BindingDescriptor> | undefined
 
     /**
      * Constructs a `HtmlTemplate` from an array of static strings and an
@@ -65,7 +69,7 @@ export class HtmlTemplate implements ElementUpdater {
         if (typeof this._templateElement === "undefined") {
             this._templateElement = document.createElement("template")
             this._templateElement.innerHTML = this.templateString
-            this._bindings = determineBindings(this._templateElement.content, this)
+            this._bindingDescriptors = determineBindingDescriptors(this._templateElement.content, this)
         }
         return this._templateElement
     }
@@ -73,12 +77,12 @@ export class HtmlTemplate implements ElementUpdater {
     /**
      * Returns all `Binding`s used to update the dynamic parts of this template. 
      */
-    get bindings(): ReadonlyArray<Binding> {
-        if (typeof this._bindings === "undefined") {
+    get bindingDescriptors(): ReadonlyArray<BindingDescriptor> {
+        if (typeof this._bindingDescriptors === "undefined") {
             return []
         }
 
-        return this._bindings
+        return this._bindingDescriptors
     }
 
     /**
@@ -87,21 +91,20 @@ export class HtmlTemplate implements ElementUpdater {
      */
     updateElement(host: UpdateTarget) {
         if (elementTemplateMap.has(host)) {
-            const tpl = elementTemplateMap.get(host)
+            const cacheEntry = elementTemplateMap.get(host)
 
-            if (tpl.strings === this.strings) {
-                tpl.data = this.data
-                applyData(tpl.bindings, this.data)
+            if (cacheEntry.template.strings === this.strings) {                
+                applyData(cacheEntry.bindings, this.data)
                 return
             }
         }
 
         removeAllChildren(host)
         host.appendChild(this.templateElement.content.cloneNode(true))
-        bindBindings(this.bindings, host)
-        applyData(this.bindings, this.data)
+        const bindings = bindBindings(this.bindingDescriptors, host)
+        applyData(bindings, this.data)
 
-        elementTemplateMap.set(host, this)
+        elementTemplateMap.set(host, new ElementTemplateCacheEntry(this, bindings))
     }
 
     /**
@@ -162,78 +165,106 @@ function generateHtml(strings: TemplateStringsArray): [string, Map<string, strin
 const DomInconsistencyError = "DOM inconsistency error"
 
 /**
- * A `Binding` defines how to apply a placeholder's value to the DOM.
+ * A factory for `Binding` objects. A BindingDescriptor is create during template
+ * creation and holds the corresponding binding index. When the a template
+ * get's applied to an element, each BindingDescriptor creates a Binding.
  */
-interface Binding {
+interface BindingDescriptor {
     /**
-     * Bind this binding to the node given.
-     * Is called once after the template's content has been cloned
-     * when nodes are iterated.
-     * 
-     * Implementations are responsible for checking if the node and
-     * traversal index should be handled.
-     * 
-     * @param node the node
-     * @param nodeIndex the traversal index
+     * Create a new Binding iff `nodeIndex` matches the index managed by this
+     * descriptor. Use `node` for that binding. If index doesn't match, return
+     * undefined.
+     * @param node 
+     * @param nodeIndex 
      */
-    bind(node: Node, nodeIndex: number): void
-
-    /**
-     * Applies the given data to the bound node.
-     * 
-     * Called multiple times to update the bound data.s
-     * 
-     * @param data all placeholder values
-     */
-    applyData(data: ReadonlyArray<unknown>): void
+    createBinding(node: Node, nodeIndex: number): Binding | undefined
 }
 
-/**
- * Base class for implementing `Binding`s.
- *
- * This base implementation handles `bind` as well as parts of
- * `applyData`.
- * 
- * If subclass needs special handling when binding the node,
- * implement `bindNode` which is called only when a node with
- * a matching traversal index is called.
- */
-abstract class BindingBase implements Binding {
-    protected node: Node
+class NodeBindingDescriptor implements BindingDescriptor {
+    constructor(private readonly nodeIndex: number, private readonly dataIndex: number) {}
 
-    /**
-     * @param nodeIndex the node's traversal index to watch for
-     */
-    constructor(protected readonly nodeIndex: number) { }
-
-
-    // Base implementation which handes nodeIndex check and data changed check.
-    // Calls doApply in case an update is needed
-
-    /**
-     * This base implementation performs the node index check and calls `bindNode`
-     * if a matching node is passed.
-     * @param node the node
-     * @param nodeIndex the node's traversal index
-     */
-    bind(node: Node, nodeIndex: number): void {
+    createBinding(node: Node, nodeIndex: number): Binding | undefined {
         if (nodeIndex !== this.nodeIndex) {
             return
         }
 
-        this.bindNode(node)
+        return new NodeBinding(node, this.dataIndex)
     }
+}
 
+class BooleanAttributeBindingDescriptor implements BindingDescriptor {
+    constructor(
+        private readonly nodeIndex: number, 
+        private readonly attributeName: string, 
+        private readonly dataIndex: number) {}
+
+    createBinding(node: Node, nodeIndex: number): Binding | undefined {
+        if (nodeIndex !== this.nodeIndex) {
+            return
+        }
+
+        return new BooleanAttributeBinding(node, this.attributeName, this.dataIndex)
+    }
+}
+
+class PropertyBindingDescriptor implements BindingDescriptor {
+    constructor(
+        private readonly nodeIndex: number, 
+        private readonly propertyName: string, 
+        private readonly dataIndex: number) {}
+
+    createBinding(node: Node, nodeIndex: number): Binding | undefined {
+        if (nodeIndex !== this.nodeIndex) {
+            return            
+        }
+        return new PropertyBinding(node, this.propertyName, this.dataIndex)
+    }
+}
+
+class EventListenerAttributeBindingDescriptor implements BindingDescriptor {
+    constructor(
+        private readonly nodeIndex: number, 
+        private readonly eventName: string, 
+        private readonly dataIndex: number,
+        private readonly directives: EventListenerAttributeDirectives) {}
+
+    createBinding(node: Node, nodeIndex: number): Binding | undefined {
+        if (nodeIndex !== this.nodeIndex) {
+            return
+        }
+
+        return new EventListenerAttributeBinding(node, this.eventName, this.dataIndex, this.directives)
+    }
+}
+
+class AttributeBindingDescriptor implements BindingDescriptor {
+    constructor(
+        private readonly nodeIndex: number, 
+        private readonly attributeName: string, 
+        private readonly valueInstructions: Array<string | number>,
+        private readonly directives: AttributeBindingDirectives) {}
+
+    createBinding(node: Node, nodeIndex: number): Binding | undefined {
+        if (nodeIndex !== this.nodeIndex) {
+            return
+        }
+
+        return new AttributeBinding(node, this.attributeName, this.valueInstructions, this.directives)
+    }
+}
+
+
+// ---
+
+/**
+ * A `Binding` defines how to apply a placeholder's value to the DOM.
+ */
+interface Binding {
     /**
-     * Called when `bind` is called with a matching traversal index.
-     * Override this method to implement custom node handling.
-     * @param node the node to bind
+     * Applies the given data to the node managed by this binding.
+     * @param data all placeholder values
      */
-    protected bindNode(node: Node): void {
-        this.node = node
-    }
-
-    abstract applyData(data: ReadonlyArray<unknown>): void
+    applyData(data: ReadonlyArray<unknown>): void
 }
 
 /**
@@ -241,12 +272,10 @@ abstract class BindingBase implements Binding {
  * index. This implementation provides checks to update the DOM
  * only when data changes.
  */
-abstract class SingleDataIndexBindingBase extends BindingBase {
+abstract class SingleDataIndexBindingBase implements Binding {
     protected boundData: unknown
 
-    constructor(nodeIndex: number, protected readonly dataIndex: number) {
-        super(nodeIndex)
-    }
+    constructor(protected readonly node: Node, protected readonly dataIndex: number) {}
 
     /**
      * Performs a check if the already bound data is equal to
@@ -278,18 +307,12 @@ abstract class SingleDataIndexBindingBase extends BindingBase {
  * Modifications can be constrained to a single `TextNode` or they
  * can include whole subtrees.
  */
-class NodeBinding extends BindingBase {
+class NodeBinding implements Binding {
     private startMarker: Node | undefined
     private endMarker: Node | undefined
     private boundData: unknown
 
-    constructor(nodeIndex: number, protected readonly dataIndex: number) {
-        super(nodeIndex)
-    }
-
-    protected bindNode(node: Node): void {
-        super.bindNode(node);
-
+    constructor(protected node: Node, protected readonly dataIndex: number) {
         // Use the node as the end marker.
         // Simplify the comment for that purpose
         (node as Comment).data = ""
@@ -366,25 +389,17 @@ class NodeBinding extends BindingBase {
     private createBindingsFromIterable(dataArray: Array<unknown>, startIndex = 0) {
         for (let idx = startIndex; idx < dataArray.length; ++idx) {
             const endMarker = this.endMarker.parentNode.insertBefore(createMarker(), this.endMarker)
-            const binding = new NodeBinding(this.nodeIndex, idx)
-            binding.bind(endMarker, this.nodeIndex);
+            const binding = new NodeBinding(endMarker, idx);
             (this.boundData as Array<unknown>).push(binding)
         }
     }
 
     private applyElementUpdate(update: ElementUpdate) {
-        if ((update instanceof HtmlTemplate) && (this.boundData instanceof HtmlTemplate)) {
-            if (update.templateString === this.boundData.templateString) {
-                // Both the previously rendered data as well as the data to render now
-                // are HtmlTemplates that share the same underlying markup.
-                // Rebind the bound values and update it so we can reuse it.
-
-                this.boundData.data = update.data
-                applyData(this.boundData.bindings, update.data)
-
-                return
-            }
-        }
+        // TODO: Do we need some optimized code in case update is a HtmlTemplate?
+        // if ((update instanceof HtmlTemplate) && (this.boundData instanceof HtmlTemplate)) {
+        //     if (update.templateString === this.boundData.templateString) {
+        //     }
+        // }
 
         // Remove all nodes between start and end in case a previous render run
         // has created data
@@ -433,24 +448,19 @@ interface AttributeBindingDirectives {
 /**
  * An implementation of `Binding` which modifies a single attribute of a DOM `Element`.
  */
-class AttributeBinding extends BindingBase {
+class AttributeBinding implements Binding {
     private element: Element
     private boundAttributeValue: string | undefined
 
-    constructor(nodeIndex: number,
+    constructor(node: Node,
         private readonly attributeName: string,
         private readonly valueInstructions: Array<string | number>,
         private readonly directives: AttributeBindingDirectives) {
-        super(nodeIndex)
-    }
-
-    protected bindNode(node: Node): void {
         if (node.nodeType !== Node.ELEMENT_NODE) {
             console.error(`Expected element to set attribute ${this.attributeName} but got ${node}`)
             throw DomInconsistencyError
         }
-        this.element = node as Element
-        super.bindNode(node)
+        this.element = node as Element        
     }
 
     applyData(data: ReadonlyArray<unknown>): void {
@@ -490,7 +500,6 @@ class AttributeBinding extends BindingBase {
 
         // Either the attribute's value should be set no matter if
         // an empty value was used or no empty value has been produced.
-
         if (attributeValue !== this.boundAttributeValue) {
             // The attribute's value is different compared to the one used
             // before. Update the element's attribute...
@@ -507,17 +516,13 @@ class AttributeBinding extends BindingBase {
 class BooleanAttributeBinding extends SingleDataIndexBindingBase {
     private element: Element
 
-    constructor(nodeIndex: number, private readonly attributeName: string, dataIndex: number) {
-        super(nodeIndex, dataIndex)
-    }
-
-    protected bindNode(node: Node): void {
+    constructor(node: Node, private readonly attributeName: string, dataIndex: number) {
+        super(node, dataIndex)
         if (node.nodeType !== Node.ELEMENT_NODE) {
             console.error(`Expected element to set attribute ${this.attributeName} but got ${node}`)
             throw DomInconsistencyError
         }
         this.element = node as Element
-        super.bindNode(node)
     }
 
     protected applyChangedData(dataItem: unknown): void {
@@ -548,19 +553,16 @@ class EventListenerAttributeBinding extends SingleDataIndexBindingBase {
     private element: Element
     private boundListener: EventListenerOrEventListenerObject
 
-    constructor(nodeIndex: number, 
+    constructor(node: Node, 
         private readonly eventName: string, dataIndex: number, 
         private readonly directives: EventListenerAttributeDirectives) {
-        super(nodeIndex, dataIndex)
-    }
+        super(node, dataIndex)
 
-    protected bindNode(node: Node): void {
         if (node.nodeType !== Node.ELEMENT_NODE) {
             console.error(`Expected element to set attribute ${this.eventName} but got ${node}`)
             throw DomInconsistencyError
         }
         this.element = node as Element
-        super.bindNode(node)
     }
 
     protected applyChangedData(dataItem: unknown): void {
@@ -607,17 +609,14 @@ class EventListenerAttributeBinding extends SingleDataIndexBindingBase {
 class PropertyBinding extends SingleDataIndexBindingBase {
     private element: Element
 
-    constructor(nodeIndex: number, private readonly propertyName: string, dataIndex: number) {
-        super(nodeIndex, dataIndex)
-    }
+    constructor(node: Node, private readonly propertyName: string, dataIndex: number) {
+        super(node, dataIndex)
 
-    protected bindNode(node: Node): void {
         if (node.nodeType !== Node.ELEMENT_NODE) {
             console.error(`Expected element to set property ${this.propertyName} but got ${node}`)
             throw DomInconsistencyError
         }
         this.element = node as Element
-        super.bindNode(node)
     }
 
     protected applyChangedData(dataItem: unknown): void {
@@ -636,11 +635,14 @@ export function applyData(bindings: ReadonlyArray<Binding>, data: ReadonlyArray<
 }
 
 /**
- * Binds a set of `Binding`s to a DOM subtree rooted at `root` with the values provided as `data`.
+ * Binds a set of `BindingDescriptors`s to a DOM subtree rooted at `root`. Returns the resulting
+ * `Bindings`s.
  * @param bindings the bindings to apply
  * @param root the root of the DOM subtree to apply bindings to
  */
-export function bindBindings(bindings: ReadonlyArray<Binding>, root: Node) {
+export function bindBindings(bindings: ReadonlyArray<BindingDescriptor>, root: Node): Array<Binding> {
+    let result: Array<Binding> = []
+
     const treeWalker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT | NodeFilter.SHOW_TEXT, null)
 
     let nodeIndex = -1
@@ -648,20 +650,21 @@ export function bindBindings(bindings: ReadonlyArray<Binding>, root: Node) {
 
     while ((node = treeWalker.nextNode()) !== null) {
         nodeIndex++
-        bindings.forEach(b => b.bind(node, nodeIndex))
+        result = result.concat(bindings.map(b => b.createBinding(node, nodeIndex)).filter(b => typeof b !== "undefined"))
     }
+
+    return result
 }
 
 /**
  * Determines the bindings described by the placeholders nested below `root`.
- * Walks the DOM subtree and collects `Bindings` returning the list of unbound
- * bindings.
+ * Walks the DOM subtree and collects `BindingDescriptors` and returns the list
  * @param root the root of the DOM subtree
  * @param template the instance of HtmlTemplate to determine bindings for
- * @returns the determined bindings
+ * @returns the determined binding descriptors
  */
-export function determineBindings(root: Node, template: HtmlTemplate): Array<Binding> {
-    const bindings: Array<Binding> = []
+export function determineBindingDescriptors(root: Node, template: HtmlTemplate): Array<BindingDescriptor> {
+    const bindings: Array<BindingDescriptor> = []
     const treeWalker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT | NodeFilter.SHOW_TEXT, null)
     let nodeIndex = -1
     let node: Node
@@ -674,7 +677,7 @@ export function determineBindings(root: Node, template: HtmlTemplate): Array<Bin
         if (node.nodeType === Node.COMMENT_NODE) {
             const comment = node as Comment
             if (isPlaceholder(comment.data)) {
-                bindings.push(new NodeBinding(nodeIndex, extractPlaceholderId(comment.data)))
+                bindings.push(new NodeBindingDescriptor(nodeIndex, extractPlaceholderId(comment.data)))
             }
 
         } else if (node.nodeType === Node.ELEMENT_NODE) {
@@ -697,7 +700,7 @@ export function determineBindings(root: Node, template: HtmlTemplate): Array<Bin
                         continue
                     }
 
-                    bindings.push(new BooleanAttributeBinding(nodeIndex, name.substring(1), extractPlaceholderId(parts[0])))
+                    bindings.push(new BooleanAttributeBindingDescriptor(nodeIndex, name.substring(1), extractPlaceholderId(parts[0])))
                     continue
                 }
 
@@ -718,7 +721,7 @@ export function determineBindings(root: Node, template: HtmlTemplate): Array<Bin
 
                     const propertyName = template.attributeName(parts[0])
 
-                    bindings.push(new PropertyBinding(nodeIndex, propertyName.substring(1), extractPlaceholderId(parts[0])))
+                    bindings.push(new PropertyBindingDescriptor(nodeIndex, propertyName.substring(1), extractPlaceholderId(parts[0])))
                     continue
                 }
 
@@ -763,7 +766,7 @@ export function determineBindings(root: Node, template: HtmlTemplate): Array<Bin
                         }
                     })
 
-                    bindings.push(new EventListenerAttributeBinding(nodeIndex, eventName, extractPlaceholderId(parts[0]), directives))
+                    bindings.push(new EventListenerAttributeBindingDescriptor(nodeIndex, eventName, extractPlaceholderId(parts[0]), directives))
                     continue
                 }
 
@@ -805,7 +808,7 @@ export function determineBindings(root: Node, template: HtmlTemplate): Array<Bin
                 })
 
                 // Finally, create the binding and append it to the list of bindings.
-                bindings.push(new AttributeBinding(nodeIndex, attributeName, valueInstructions, directives))
+                bindings.push(new AttributeBindingDescriptor(nodeIndex, attributeName, valueInstructions, directives))
             }
         }
     }
