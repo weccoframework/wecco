@@ -98,4 +98,19 @@ describe("app.ts", () => {
             })
         })
     })
+
+    describe("model initialization context", () => {
+        const update = ({ message }: UpdaterContext<Model, Message>): Model => {
+            return message
+        }
+
+        it("should emit messages from model init", () => {
+            createApp(({emit}) => {
+                emit("hello again")
+                return "hello, world"
+            }, update, view).mount(document.body)
+
+            expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello again</p>")
+        })
+    })
 })
