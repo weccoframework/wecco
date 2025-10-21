@@ -54,7 +54,7 @@ export function removeAllChildren(node: Node) {
  */
 export function removeNodes(start: Node, end?: Node) {
     while (start && start !== end) {
-        let s = start
+        const s = start
         start = start.nextSibling
         s.parentNode.removeChild(s)
     }
