@@ -115,14 +115,26 @@ export function createApp<MODEL, MESSAGE>(modelInitializer: ModelInitializer<MOD
 }
 
 class ModelInitializationContextImpl<MESSAGE> implements InitializationContext<MESSAGE> {
-    messages: Array<MESSAGE>
+    private messages: Array<MESSAGE> = []
+    private enabled = false
 
-    constructor () {
+    constructor (private readonly emitter: MessageEmitter<MESSAGE>) {
         this.messages = []
     }
 
     emit = (m: MESSAGE) => {
-        this.messages.push(m)
+        if (!this.enabled) {
+            this.messages.push(m)
+            return
+        }
+
+        this.emitter(m)
+    }
+
+    enable(): void {
+        this.enabled = true
+        this.messages.forEach(this.emitter)
+        this.messages = []
     }
 }
 
@@ -131,7 +143,7 @@ class AppImpl<MODEL, MESSAGE> implements App<MODEL, MESSAGE> {
     private mountPoint: Element | undefined
 
     constructor(modelInitializer: ModelInitializer<MODEL, MESSAGE>, private readonly updater: Updater<MODEL, MESSAGE>, private readonly view: View<MODEL, MESSAGE>) {
-        const initCtx = new ModelInitializationContextImpl<MESSAGE>()
+        const initCtx = new ModelInitializationContextImpl<MESSAGE>(this.emit.bind(this))
         const m = modelInitializer(initCtx)
         if (m instanceof Promise) {
             m
@@ -145,7 +157,7 @@ class AppImpl<MODEL, MESSAGE> implements App<MODEL, MESSAGE> {
 
         this._model = m
 
-        initCtx.messages.forEach(this.emit.bind(this))
+        initCtx.enable()
     }
 
     mount(mountPoint: ElementSelector) {

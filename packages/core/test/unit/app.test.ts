@@ -20,7 +20,7 @@ import { expect } from "iko"
 import { createApp, NoModelChange, UpdaterContext, ViewContext } from "../../src/app"
 import { html } from "../../src/html"
 import { ElementUpdate } from "../../src/update"
-import { removeMarkerComments } from "./testutils"
+import { removeMarkerComments, sleep } from "./testutils"
 
 describe("app.ts", () => {
     beforeEach(() => {
@@ -110,6 +110,16 @@ describe("app.ts", () => {
                 return "hello, world"
             }, update, view).mount(document.body)
 
+            expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello again</p>")
+        })
+
+        it("should emit async messages from model init", async () => {
+            createApp(({emit}) => {
+                setTimeout(() => emit("hello again"), 50)
+                return "hello, world"
+            }, update, view).mount(document.body)
+            expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello, world</p>")
+            await sleep(70)
             expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello again</p>")
         })
     })
