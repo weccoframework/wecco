@@ -25,3 +25,8 @@
 export function removeMarkerComments(html: string): string {
     return html.replace(/<!---->/g, "")
 }
+
+
+export async function sleep(millis = 10) {
+    return new Promise(resolve => setTimeout(resolve, millis))
+}
