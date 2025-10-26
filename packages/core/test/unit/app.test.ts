@@ -122,5 +122,16 @@ describe("app.ts", () => {
             await sleep(70)
             expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello again</p>")
         })
+
+        it("should emit async messages from model init that returns a promise", async () => {
+            createApp(({emit}) => {
+                setTimeout(() => emit("hello again"), 50)
+                return Promise.resolve("hello, world")
+            }, update, view).mount(document.body)
+            await sleep(1)
+            expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello, world</p>")
+            await sleep(70)
+            expect(removeMarkerComments(document.body.innerHTML)).toBe("<p>hello again</p>")
+        })
     })
 })

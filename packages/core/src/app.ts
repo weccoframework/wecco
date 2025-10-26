@@ -149,6 +149,7 @@ class AppImpl<MODEL, MESSAGE> implements App<MODEL, MESSAGE> {
             m
                 .then(model => {
                     this._model = model
+                    initCtx.enable()
                     this.performUpdate()
                 })
                 .catch(console.error)
@@ -156,7 +157,6 @@ class AppImpl<MODEL, MESSAGE> implements App<MODEL, MESSAGE> {
         }
 
         this._model = m
-
         initCtx.enable()
     }
 
