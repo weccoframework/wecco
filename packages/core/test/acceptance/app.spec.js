@@ -17,7 +17,6 @@
  */
 
 import { expect, test } from "@playwright/test"
-import { sleep } from "./sleep"
 
 test.describe("app", () => {
     test("should run counter app", async ({ page }) => {
