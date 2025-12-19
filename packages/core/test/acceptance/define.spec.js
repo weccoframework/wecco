@@ -178,21 +178,21 @@ test.describe("define", () => {
             await expect(page.locator("#app count-clicks p")).toHaveText("You clicked me 1 times.")
         })
 
-        test("should invoke @update eventlistener after component has been updated (html syntax)", async ({ page }) => {
+        test("should invoke @updateend eventlistener after component has been updated (html syntax)", async ({ page }) => {
             await page.goto(".")
             await page.evaluate(() => {
-                wecco.define("my-component", () => wecco.html`<span @update=${e => e.target.innerText = "foo"}>bar</span>`)
+                wecco.define("my-component", () => wecco.html`<span @updateend=${e => e.target.innerText = "foo"}>bar</span>`)
                 document.querySelector("#app").innerHTML = "<my-component></my-component>"
             })
 
             await expect(page.locator("#app span")).toHaveText("foo")
         })
 
-        test("should invoke @update eventlistener after component has been updated (js api)", async ({ page }) => {
+        test("should invoke @updateend eventlistener after component has been updated (js api)", async ({ page }) => {
             await page.goto(".")
             await page.evaluate(() => {
                 window.mountCalled = 0
-                const c = wecco.define("my-component", ({data}) => wecco.html`<span @update=${() => window.mountCalled++}>${data.message}</span>`)
+                const c = wecco.define("my-component", ({data}) => wecco.html`<span @updateend=${() => window.mountCalled++}>${data.message}</span>`)
                 const e = c({ message: "hello" })
                 e.mount("#app")
                 e.setData({ message: "world" })
@@ -202,10 +202,10 @@ test.describe("define", () => {
             expect(await page.evaluate(() => window.mountCalled)).toBe(2)
         })
 
-        test("should invoke @update eventlistener after nested component has been updated", async ({ page }) => {
+        test("should invoke @updateend eventlistener after nested component has been updated", async ({ page }) => {
             await page.goto(".")
             await page.evaluate(() => {
-                wecco.define("my-component", () => wecco.html`<div><span @update=${e => e.target.innerText = "foo"}>bar</span></div>`)
+                wecco.define("my-component", () => wecco.html`<div><span @updateend=${e => e.target.innerText = "foo"}>bar</span></div>`)
                 document.querySelector("#app").innerHTML = "<my-component></my-component>"
             })
             await sleep()
@@ -213,7 +213,7 @@ test.describe("define", () => {
             await expect(page.locator("#app div span")).toHaveText("foo")
         })
 
-        test("should invoke @update for a custom element only once per update cycle", async ({ page }) => {
+        test("should invoke @updateend for a custom element only once per update cycle", async ({ page }) => {
             await page.goto(".")
             await page.evaluate(() => {
                 window.updateCounter = 0;
@@ -221,7 +221,7 @@ test.describe("define", () => {
                     const onUpdate = () => {
                         window.updateCounter++
                     }
-                    return wecco.html`<h1 @update=${onUpdate}>test-component</h1>`
+                    return wecco.html`<h1 @updateend=${onUpdate}>test-component</h1>`
                 })
 
                 wecco.updateElement("#app", comp())
@@ -232,7 +232,7 @@ test.describe("define", () => {
             expect(count).toBe(1)
         })
 
-        test("should invoke @update for a custom element wrapped in html tagged string only once per mounting cycle", async ({ page }) => {
+        test("should invoke @updateend for a custom element wrapped in html tagged string only once per mounting cycle", async ({ page }) => {
             await page.goto(".")
             await page.evaluate(() => {
                 window.mountCounter = 0;
@@ -240,7 +240,7 @@ test.describe("define", () => {
                     const onMount = () => {
                         window.mountCounter++
                     }
-                    return wecco.html`<h1 @update=${onMount}>test-component</h1>`
+                    return wecco.html`<h1 @updateend=${onMount}>test-component</h1>`
                 })
 
                 wecco.updateElement(document.querySelector("#app"), wecco.html`<div>${comp()}</div>`)
@@ -396,7 +396,7 @@ test.describe("define", () => {
                 }
 
                 wecco.define("test-component", () => {
-                    return wecco.html`<div @update=${init}></div>`
+                    return wecco.html`<div @updateend=${init}></div>`
                 })
                 document.querySelector("#app").innerHTML = "<test-component></test-component>"
             })
@@ -417,7 +417,7 @@ test.describe("define", () => {
                 }
 
                 wecco.define("test-component", () => {
-                    return wecco.shadow(wecco.html`<div @update=${init}></div>`)
+                    return wecco.shadow(wecco.html`<div @updateend=${init}></div>`)
                 })
                 document.querySelector("#app").innerHTML = "<test-component></test-component>"
             })
@@ -438,7 +438,7 @@ test.describe("define", () => {
                         window._receivedEventTargets.push(e.target.nodeName)
                     }
                     return wecco.shadow([
-                        wecco.html`<div @update=${init}></div>`
+                        wecco.html`<div @updateend=${init}></div>`
                     ])
                 })
                 document.querySelector("#app").innerHTML = "<test-component></test-component>"
@@ -450,12 +450,12 @@ test.describe("define", () => {
             expect(eventTargets.length).toBe(1)
         })
 
-        test("should invoke @update for custom elements", async ({ page }) => {
+        test("should invoke @updateend for custom elements", async ({ page }) => {
             await page.goto(".")
             await page.evaluate(() => {
                 wecco.define("custom-element", () => "")
                 window.updateCalled = 0
-                wecco.updateElement("#app", wecco.html`<custom-element @update=${() => { window.updateCalled++ }}></custom-element>`)
+                wecco.updateElement("#app", wecco.html`<custom-element @updateend=${() => { window.updateCalled++ }}></custom-element>`)
             })
             await sleep()
 

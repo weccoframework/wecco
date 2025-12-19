@@ -127,7 +127,7 @@ test.describe("updateElement", () => {
     })
 
     test.describe("events", () => {
-        test("should invoke @update only once per update cycle", async ({page}) => {
+        test("should invoke @updateend only once per update cycle", async ({page}) => {
             await page.goto(".")
             await page.evaluate(() => {
                 window.updateCounter = 0;
@@ -135,7 +135,7 @@ test.describe("updateElement", () => {
                     const onMount = () => {
                         window.updateCounter++;
                     };
-                    return wecco.html`<h1 @update=${onMount}>test-component</h1>`;
+                    return wecco.html`<h1 @updateend=${onMount}>test-component</h1>`;
                 };
 
                 wecco.updateElement(document.querySelector("#app"), wecco.html`${comp()}`);
@@ -146,11 +146,11 @@ test.describe("updateElement", () => {
             expect(count).toBe(1)
         })
 
-        test("should invoke @update for nested html template", async ({page}) => {
+        test("should invoke @updateend for nested html template", async ({page}) => {
             await page.goto(".")
             await page.evaluate(() => {
                 window.updateCalled = 0
-                wecco.updateElement("#app", wecco.html`<div>${wecco.html`<span @update=${() => { window.updateCalled++ }}></span>`}</div>`)
+                wecco.updateElement("#app", wecco.html`<div>${wecco.html`<span @updateend=${() => { window.updateCalled++ }}></span>`}</div>`)
             })
             await sleep()
 
@@ -158,11 +158,11 @@ test.describe("updateElement", () => {
             expect(updateCalled).toBe(1)
         })
 
-        test("should invoke @update for deeply nested html template", async ({page}) => {
+        test("should invoke @updateend for deeply nested html template", async ({page}) => {
             await page.goto(".")
             await page.evaluate(() => {
                 window.updateCalled = 0
-                wecco.updateElement("#app", wecco.html`<div>${wecco.html`<div>${wecco.html`<span @update=${() => { window.updateCalled++ }}></span>`}</div>`}</div>`)
+                wecco.updateElement("#app", wecco.html`<div>${wecco.html`<div>${wecco.html`<span @updateend=${() => { window.updateCalled++ }}></span>`}</div>`}</div>`)
             })
             await sleep()
 
@@ -175,14 +175,18 @@ test.describe("updateElement", () => {
             await page.evaluate(() => {
                 const div = document.createElement("div")
                 document.body.appendChild(div)
+
                 window.updatestartCalled = false
                 window.updateendCalled = false
+                
                 div.addEventListener("updatestart", () => {
                     window.updatestartCalled = true
                 })
+                
                 div.addEventListener("updateend", () => {
                     window.updateendCalled = true
                 })
+                
                 wecco.updateElement(div, "test")
             })
             await page.waitForTimeout(10)
@@ -192,6 +196,44 @@ test.describe("updateElement", () => {
 
             expect(updatestartCalled).toBe(true)
             expect(updateendCalled).toBe(true)
+        })
+
+        test("should invoke updatestart and updateend for nested html template elements", async({page}) => {
+            await page.goto(".")
+            await page.evaluate(() => {
+                const div = document.createElement("div")
+                document.body.appendChild(div)
+
+                window.updatestartCalled = 0
+                window.updateendCalled = 0
+
+                window.executeUpdate = () => {
+                    wecco.updateElement(div, wecco.html`
+                        <div><span @updatestart=${() => window.updatestartCalled++} @updateend=${() => window.updateendCalled++}></span></div>
+                    `)
+                }
+                                
+                window.executeUpdate()
+            })
+            await page.waitForTimeout(10)
+            const [updatestartCalled, updateendCalled] = await page.evaluate(() => {
+                return [window.updatestartCalled, window.updateendCalled]
+            })
+
+            expect(updatestartCalled).toBe(0)
+            expect(updateendCalled).toBe(1)
+
+            await page.evaluate(() => {
+                window.executeUpdate()
+            })
+
+            await page.waitForTimeout(10)
+            const [updatestartCalledAgain, updateendCalledAgain] = await page.evaluate(() => {
+                return [window.updatestartCalled, window.updateendCalled]
+            })
+
+            expect(updatestartCalledAgain).toBe(1)
+            expect(updateendCalledAgain).toBe(2)
         })
     })
 

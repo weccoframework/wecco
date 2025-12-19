@@ -124,5 +124,31 @@ describe("update.ts", () => {
             updateElement(target, html`<div>1st</div><div>2nd</div>`)
             expect(target.innerHTML).toBe("<div>1st</div><div>2nd</div>")
         })
+
+        // describe("should send updatestart and updateend events", () => {
+        //     const target = document.createElement("div")
+        //     let updateStart: Array<EventTarget>
+        //     let updateEnd: Array<EventTarget>
+
+        //     beforeEach(() => {
+        //         updateStart = []
+        //         updateEnd = []
+        //     })
+
+        //     target.addEventListener("updatestart", (e) => {
+        //         console.log(e.target)
+        //         updateStart.push(e.target)
+        //     })
+
+        //     target.addEventListener("updateend", (e) => {
+        //         updateEnd.push(e.target)
+        //     })
+
+        //     it("after first rendering", () => { 
+        //         updateElement(target, html`<div>1st</div>`)
+        //         expect(updateStart).toBe([target])
+        //         expect(updateEnd).toBe([target])                
+        //     }) 
+        // })
     })
 })
