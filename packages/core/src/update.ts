@@ -67,7 +67,7 @@ export function isElementUpdate(arg: any): arg is ElementUpdate {
  * `updateElement` applies the given update request to the given target.
  * @param target the target to update
  * @param request the request
- * @param notifyUpdated whether to send an update event after the element update
+ * @param notifyUpdated whether to send update events for the tree updated under target
  */
 export function updateElement(target: UpdateTarget | ElementSelector, request: ElementUpdate, notifyUpdated?: boolean): void {
     notifyUpdated = notifyUpdated ?? true
@@ -76,25 +76,27 @@ export function updateElement(target: UpdateTarget | ElementSelector, request: E
         ? resolve(target)
         : target
 
-    targetElement.dispatchEvent(new CustomEvent(CustomEventUpdateStart, { bubbles: false }))
+    // If this call is the root of the update cycle, emit an updatestart event
+    // on all nested elements.
+    if (notifyUpdated) {
+        traverseAndDispatchUpdateEvents(targetElement, CustomEventUpdateStart)
+    }
 
     try {
-
         // Execute the update. Never let a downstream updater
         // send an update notification.
         executeElementUpdate(targetElement, request)
 
-        // If this call is the root of the update cycle, send
-        // the update notification.
+        // If this call is the root of the update cycle, emit an updateend event
+        // on all nested elements.
         if (notifyUpdated) {
-            sendUpdateEvent(targetElement)
+            traverseAndDispatchUpdateEvents(targetElement, CustomEventUpdateEnd)
         }
     } finally {
         targetElement.dispatchEvent(new CustomEvent(CustomEventUpdateEnd, { bubbles: false }))
     }
 }
 
-export const CustomEventUpdate = "update"
 export const CustomEventUpdateStart = "updatestart"
 export const CustomEventUpdateEnd = "updateend"
 
@@ -104,33 +106,33 @@ export const CustomEventUpdateEnd = "updateend"
  * not bubble.
  * @param targetElement the root of the update
  */
-function sendUpdateEvent(targetElement: UpdateTarget): void {
+function traverseAndDispatchUpdateEvents(targetElement: UpdateTarget, eventName: string): void {
+    const dispatchEvent = (target: EventTarget) => target.dispatchEvent(new CustomEvent(eventName, {
+        // Don't let the event bubble up the DOM. An individual event
+        // will be dispatched for every element that is part of the
+        // update.
+        bubbles: false,
+    }))
+
     if (!targetElement.isConnected) {
         // If the element is not connected to a document root, we do not send any update here.
         return
     }
 
+    // Send an update for the element itself
+    dispatchEvent(targetElement)
+
     // Send update event for all elements not visiting neither custom elements nor their sub-trees.
     let treeWalker = document.createTreeWalker(targetElement, NodeFilter.SHOW_ELEMENT, ExcludeCustomElementsFilter)
     let e: Node
     while (e = treeWalker.nextNode()) {
-        (e as EventTarget).dispatchEvent(new CustomEvent(CustomEventUpdate, {
-            // Don't let the event bubble up the DOM. An individual event
-            // will be dispatched for every element that is part of the
-            // update.
-            bubbles: false,
-        }))
+        dispatchEvent(e as EventTarget)
     }
 
     // Send update event for all custom elments but only custom elements alone - not their sub-trees.
     treeWalker = document.createTreeWalker(targetElement, NodeFilter.SHOW_ELEMENT, OnlyCustomElementsFilter)
     while (e = treeWalker.nextNode()) {
-        (e as EventTarget).dispatchEvent(new CustomEvent(CustomEventUpdate, {
-            // Don't let the event bubble up the DOM. An individual event
-            // will be dispatched for every element that is part of the
-            // update.
-            bubbles: false,
-        }))
+        dispatchEvent(e as EventTarget)
     }
 }
 

@@ -222,11 +222,11 @@ describe("html.ts", async () => {
                 expect(eventTargets).toBeEqual(["a"])
             })
     
-            it("should create html w/ update placeholder", () => {
+            it("should create html w/ @updateend placeholder", () => {
                 let element: Element | null = null
                 const callback = (e: CustomEvent) => { element = e.target as Element}
     
-                const template = (html`<a @update=${callback}>Hello, world</a>`)
+                const template = (html`<a @updateend=${callback}>Hello, world</a>`)
                 updateElement(document.body, template)
     
                 expect(removeMarkerComments(document.body.innerHTML)).toBe(`<a>Hello, world</a>`)
@@ -235,13 +235,13 @@ describe("html.ts", async () => {
     
             it("should render nested html template and propagate @update event", () => {
                 let updateCalled = false
-                updateElement(document.body, html`<div>${html`<span @update=${() => { updateCalled = true }}></span>`}</div>`)        
+                updateElement(document.body, html`<div>${html`<span @updateend=${() => { updateCalled = true }}></span>`}</div>`)        
                 expect(updateCalled).toBe(true)
             })
 
             it("should render list of nested html template and propagate @update event", () => {
                 let updateCalled = 0
-                updateElement(document.body, [html`<div>${html`<span @update=${() => { updateCalled++ }}></span>`}</div>`])
+                updateElement(document.body, [html`<div>${html`<span @updateend=${() => { updateCalled++ }}></span>`}</div>`])
                 expect(updateCalled).toBe(1)
             })
         })
@@ -385,14 +385,14 @@ describe("html.ts", async () => {
                 expect(removeMarkerComments(document.body.innerHTML)).toBe(`<ul><li>z</li></ul>`)
             })
 
-            it("should re-render nested html template and propagate @update event", () => {
+            it("should re-render nested html template and propagate @updateend event", () => {
                 let updateCalled = 0
     
-                updateElement(document.body, html`<div>${html`<span @update=${() => { updateCalled++ }}>hello, ${"world"}!</span>`}</div>`)
+                updateElement(document.body, html`<div>${html`<span @updateend=${() => { updateCalled++ }}>hello, ${"world"}!</span>`}</div>`)
                 expect(removeMarkerComments(document.querySelector("span").innerHTML)).toBe("hello, world!")
                 expect(updateCalled).toBe(1)
                 
-                updateElement(document.body, html`<div>${html`<span @update=${() => { updateCalled++ }}>hello, ${"foo"}!</span>`}</div>`)
+                updateElement(document.body, html`<div>${html`<span @updateend=${() => { updateCalled++ }}>hello, ${"foo"}!</span>`}</div>`)
                 expect(removeMarkerComments(document.querySelector("span").innerHTML)).toBe("hello, foo!")
                 expect(updateCalled).toBe(2)
             })            
