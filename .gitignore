@@ -7,3 +7,4 @@ wecco-core*.tgz
 *.d.ts
 reports
 moodboard
+test-results
